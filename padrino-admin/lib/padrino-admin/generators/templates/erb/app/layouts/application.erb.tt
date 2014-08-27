@@ -24,7 +24,7 @@
             </li>
           </ul>
 
-          <ul class="nav navbar-nav pull-left">
+          <ul class="nav navbar-nav pull-left" style="margin-top:20px">
             <form action"/" method="get">
             <select name="model" class="navbar-module" id="model-selector"> 
             <option />
