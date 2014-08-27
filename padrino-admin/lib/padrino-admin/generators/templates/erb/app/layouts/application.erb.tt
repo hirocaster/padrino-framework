@@ -29,7 +29,7 @@
             <select name="model" class="navbar-module" id="model-selector"> 
             <option />
             <%% project_modules.sort_by{|m| m.human_name}.each do |project_module| %>
-            <option value="<%= url(project_module.path) %>" 
+            <option value="<%%= url(project_module.path) %>" 
               <%% if request.path_info =~ /^#{project_module.path}/ %>
                 selected
               <%% else %>
