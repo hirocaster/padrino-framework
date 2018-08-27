@@ -24,16 +24,22 @@
             </li>
           </ul>
 
-          <ul class="nav navbar-nav pull-left">
-            <%% project_modules.each do |project_module| %>
+          <ul class="nav navbar-nav pull-left" style="margin-top:20px">
+            <form action"/" method="get">
+            <select name="model" class="navbar-module" id="model-selector"> 
+            <option />
+            <%% project_modules.sort_by{|m| m.human_name}.each do |project_module| %>
+            <option value="<%%= url(project_module.path) %>" 
               <%% if request.path_info =~ /^#{project_module.path}/ %>
-                <li class="navbar-module active">
+                selected
               <%% else %>
-                <li class=navbar-module>
               <%% end %>
-                <%%= link_to project_module.human_name, url(project_module.path) %>
-                </li>
+               class="model">
+                <%%= project_module.human_name %>
+            </option>
             <%% end %>
+            </select>
+            </form>
           </ul>
         </div>
       </div>
@@ -59,6 +65,6 @@
       </div>
     </footer>
 
-    <%%= javascript_include_tag 'jquery-1.11.0.min', (Padrino.env == :production ? 'bootstrap/bootstrap.min' : %w[bootstrap/affix bootstrap/alert bootstrap/button bootstrap/carousel bootstrap/collapse bootstrap/dropdown  bootstrap/tooltip bootstrap/transition  bootstrap/modal bootstrap/popover bootstrap/scrollspy bootstrap/tab]), :application %>
+    <%%= javascript_include_tag 'jquery-1.11.0.min', (Padrino.env == :production ? 'bootstrap/bootstrap.min' : %w[bootstrap/affix bootstrap/alert bootstrap/button bootstrap/carousel bootstrap/collapse bootstrap/dropdown  bootstrap/tooltip bootstrap/transition  bootstrap/modal bootstrap/popover bootstrap/scrollspy bootstrap/tab]), :application, 'model-selector'%>
   </body>
 </html>
