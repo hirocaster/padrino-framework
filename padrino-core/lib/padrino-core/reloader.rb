@@ -138,6 +138,13 @@ module Padrino
       @special_files = Set.new(files)
     end
 
+    ###
+    # Macro for mtime remove.
+    #
+    def remove_modification_time(file)
+      MTIMES.delete(file)
+    end
+
     private
 
     ##
