@@ -22,7 +22,7 @@ module Padrino
         file = remove(name)
         @old_entries ||= {}
         @old_entries[name] = {
-          :constants => object_classes,
+          :constants => ObjectSpace.classes,
           :features  => old_features = Set.new($LOADED_FEATURES.dup),
           :mtimes => mtimes.dup
         }
@@ -41,7 +41,7 @@ module Padrino
       end
 
       def rollback(name, mtimes)
-        new_constants = new_classes(@old_entries[name][:constants]).reject do |constant|
+        new_constants = ObjectSpace.new_classes(@old_entries[name][:constants]).reject do |constant|
           newly_commited_constant?(constant, mtimes, @old_entries[name][:mtimes])
         end
         new_constants.each{ |klass| Reloader.remove_constant(klass) }
@@ -52,34 +52,6 @@ module Padrino
 
       def files
         @files ||= {}
-      end
-
-      ##
-      # Returns all the classes in the object space.
-      #
-      def object_classes
-        klasses = Set.new
-
-        ObjectSpace.each_object(::Class).each do |klass|
-          if block_given?
-            if filtered_class = yield(klass)
-              klasses << filtered_class
-            end
-          else
-            klasses << klass
-          end
-        end
-
-        klasses
-      end
-
-      ##
-      # Returns a list of object space classes that are not included in "snapshot".
-      #
-      def new_classes(snapshot)
-        object_classes do |klass|
-          snapshot.include?(klass) ? nil : klass
-        end
       end
 
       ##
