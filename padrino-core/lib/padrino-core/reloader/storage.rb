@@ -44,7 +44,7 @@ module Padrino
         new_constants.each do |klass|
           files.each do |file|
             if file[1][:constants].include?(klass)
-              Reloader.clear_modification_time(file[0])
+              Reloader.remove_modification_time(file[0])
             end
           end
           Reloader.remove_constant(klass)
