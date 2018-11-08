@@ -112,6 +112,7 @@ module Padrino
       return if constant_excluded?(const)
       base, _, object = const.to_s.rpartition('::')
       base = base.empty? ? Object : base.constantize
+      return unless base.const_get(object).equal?(const)
       base.send :remove_const, object
       logger.devel "Removed constant #{const} from #{base}"
     rescue NameError
@@ -241,7 +242,7 @@ module Padrino
     # Tells if a constant should be excluded from Reloader routines.
     #
     def constant_excluded?(const)
-      external_constant?(const) || (exclude_constants - include_constants).any?{ |excluded_constant| const._orig_klass_name.start_with?(excluded_constant) }
+      external_constant?(const) || (exclude_constants - include_constants).any?{ |excluded_constant| constant_name(const).start_with?(excluded_constant) }
     end
 
     ##
@@ -251,13 +252,8 @@ module Padrino
     #
     def external_constant?(const)
       sources = object_sources(const)
-      begin
-        if sample = ObjectSpace.each_object(const).first
-          sources += object_sources(sample)
-        end
-      rescue RuntimeError => error # JRuby 1.7.12 fails to ObjectSpace.each_object
-        raise unless RUBY_PLATFORM =='java' && error.message.start_with?("ObjectSpace is disabled")
-      end
+      # consider methodless constants not external
+      return false if sources.empty?
       !sources.any?{ |source| source.start_with?(Padrino.root) }
     end
 
@@ -269,8 +265,16 @@ module Padrino
     def object_sources(target)
       sources = Set.new
       target.methods.each do |method_name|
+        next unless method_name.kind_of?(Symbol)
         method_object = target.method(method_name)
-        if method_object.owner == (target.class == Class ? target.singleton_class : target.class)
+        if method_object.owner == target.singleton_class
+          sources << method_object.source_location.first
+        end
+      end
+      target.instance_methods.each do |method_name|
+        next unless method_name.kind_of?(Symbol)
+        method_object = target.instance_method(method_name)
+        if method_object.owner == target
           sources << method_object.source_location.first
         end
       end
@@ -300,6 +304,12 @@ module Padrino
       yield
     ensure
       $-v = verbosity_level
+    end
+
+    def constant_name(constant)
+      constant._orig_klass_name
+    rescue NoMethodError
+      constant.name
     end
   end
 end
