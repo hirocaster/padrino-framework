@@ -41,7 +41,13 @@ module Padrino
 
       def rollback(name)
         new_constants = ObjectSpace.new_classes(@old_entries[name][:constants])
-        new_constants.each{ |klass| Reloader.remove_constant(klass) }
+        new_constants.each do |klass|
+          loaded_in_name = files.each do |file, data|
+                             next if file == name
+                             break if data[:constants].include?(klass)
+                           end
+          Reloader.remove_constant(klass) if loaded_in_name
+        end
         @old_entries.delete(name)
       end
 
