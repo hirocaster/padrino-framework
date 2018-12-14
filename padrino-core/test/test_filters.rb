@@ -300,6 +300,24 @@ describe "Filters" do
     assert_equal 'before', test
   end
 
+  it 'should ensure the call of before_filter at the first time' do
+    once = ''
+    mock_app do
+      before do
+        once += 'before'
+      end
+      get :index do
+        raise Exception, 'Oops'
+      end
+      post :index do
+        raise Exception, 'Oops'
+      end
+    end
+
+    post '/'
+    assert_equal 'before', once
+  end
+
   it 'should call before filters only once' do
     once = ''
     mock_app do
@@ -319,7 +337,7 @@ describe "Filters" do
   end
 
   it 'should catch exceptions in before filters' do
-    doodle = nil
+    doodle = ''
     mock_app do
       after do
         doodle = 'Been after'
@@ -337,7 +355,7 @@ describe "Filters" do
 
     get '/'
     assert_equal 'We broke before', body
-    assert_equal nil, doodle
+    assert_equal '', doodle
   end
 
   it 'should catch exceptions in after filters if no exceptions caught before' do
@@ -369,4 +387,14 @@ describe "Filters" do
     assert_equal 'Been now and after', doodle
   end
 
+  it 'should trigger filters if superclass responds to :filters' do
+    class FilterApp < Padrino::Application
+      before { @foo = "foo" }
+    end
+    mock_app FilterApp do
+      get("/") { @foo }
+    end
+    get "/"
+    assert_equal "foo", body
+  end
 end

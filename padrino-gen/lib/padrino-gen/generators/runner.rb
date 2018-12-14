@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'open-uri'
 
 module Padrino
   module Generators
@@ -70,12 +71,12 @@ module Padrino
       #    generate :model, "posts title:string" # generate a model inside of subapp
       #   end
       #
-      def app(name, &block)
+      def app(name)
         say "=> Executing: padrino-gen app #{name} -r=#{destination_root}", :magenta
         Padrino.bin_gen(:app, name.to_s, "-r=#{destination_root}")
         if block_given?
           @_app_name = name
-          block.call
+          yield
           @_app_name = nil
         end
       end
@@ -125,14 +126,18 @@ module Padrino
           when template_file =~ %r{^https?://} && template_file !~ /gist/
             template_file
           when template_file =~ /gist/ && template_file !~ /raw/
-            raw_link, _ = *open(template_file).read.scan(/<a\s+href\s?\=\"(.*?)\"\>raw/)
+            raw_link, _ = *open(template_file) { |io| io.read.scan(/<a\s+href\s?\=\"(.*?)\"\>raw/) }
             raw_link ? "https://gist.github.com#{raw_link[0]}" : template_file
-          when File.extname(template_file).blank? # referencing official plugin (i.e hoptoad)
+          when File.extname(template_file).empty? # referencing official plugin (i.e hoptoad)
             "https://raw.github.com/padrino/padrino-recipes/master/#{kind.to_s.pluralize}/#{template_file}_#{kind}.rb"
           else # local file on system
             File.expand_path(template_file)
           end
-        self.apply(template_path) rescue say("The template at #{template_path} could not be found!", :red)
+        begin
+          self.apply(template_path)
+        rescue => error
+          say("The template at #{template_path} could not be loaded: #{error.message}", :red)
+        end
       end
     end
   end

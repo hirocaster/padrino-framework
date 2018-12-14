@@ -9,11 +9,11 @@ if PadrinoTasks.load?(:sequel, defined?(Sequel))
         puts "<= sq:migrate:auto executed"
       end
 
-      desc "Perform migration up/down to VERSION"
+      desc "Perform migration up/down to MIGRATION_VERSION"
       task :to, [:version] => :skeleton do |t, args|
-        version = (args[:version] || ENV['VERSION']).to_s.strip
+        version = (args[:version] || env_migration_version).to_s.strip
         ::Sequel.extension :migration
-        raise "No VERSION was provided" if version.empty?
+        fail "No MIGRATION_VERSION was provided" if version.empty?
         ::Sequel::Migrator.apply(Sequel::Model.db, "db/migrate", version.to_i)
         puts "<= sq:migrate:to[#{version}] executed"
       end
@@ -70,8 +70,17 @@ if PadrinoTasks.load?(:sequel, defined?(Sequel))
       puts "<= sq:drop executed"
     end
 
+    desc 'Drop the database, migrate from scratch and initialize with the seed data'
+    task :reset => ['drop', 'create', 'migrate', 'seed']
+
+    task :seed => :environment do
+      missing_model_features = Padrino.send(:default_dependency_paths) - Padrino.send(:dependency_paths)
+      Padrino.require_dependencies(missing_model_features)
+      Rake::Task['db:seed'].invoke
+    end
   end
 
+  task 'db:create' => 'sq:create'
   task 'db:migrate' => 'sq:migrate'
-  task 'db:reset' => ['sq:drop', 'sq:create', 'sq:migrate', 'seed']
+  task 'db:reset' => 'sq:reset'
 end

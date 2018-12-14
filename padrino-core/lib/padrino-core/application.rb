@@ -26,26 +26,14 @@ module Padrino
       Padrino.logger
     end
 
-    # TODO: Remove this hack (issue #863) after getting rid of thread-unsafe http_router:
-    if RUBY_PLATFORM == "java"
-      alias_method :original_call, :call
-      def call(*args)
-        settings.init_mutex.synchronize do
-          instance_eval{ undef :call }
-          class_eval{ alias_method :call, :original_call }
-          instance_eval{ undef :original_call }
-          super(*args)
-        end
-      end
-    end
-
     class << self
       def inherited(base)
         begun_at = Time.now
         CALLERS_TO_IGNORE.concat(PADRINO_IGNORE_CALLERS)
+        super(base)
+        base.prerequisites.replace(self.prerequisites.dup)
         base.default_configuration!
         logger.devel :setup, begun_at, base
-        super(base)
       end
 
       ##
@@ -65,7 +53,6 @@ module Padrino
         reset_router!
         Padrino.require_dependencies(settings.app_file, :force => true)
         require_dependencies
-        default_filters
         default_routes
         default_errors
         I18n.reload! if defined?(I18n)
@@ -149,7 +136,7 @@ module Padrino
           'controllers.rb',
           'helpers/**/*.rb',
           'helpers.rb',
-        ].map { |file| Dir.glob(File.join(settings.root, file)) }.flatten
+        ].flat_map{ |file| Dir.glob(File.join(settings.root, file)) }
       end
 
       ##
@@ -173,12 +160,6 @@ module Padrino
 
       def default(option, *args, &block)
         set(option, *args, &block) unless respond_to?(option)
-      end
-
-      # Deprecated
-      def load_paths
-        warn 'Padrino::Application#load_paths is deprecated. Please, use #prerequisites'
-        []
       end
 
       protected

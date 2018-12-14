@@ -1,11 +1,12 @@
-require File.expand_path(File.dirname(__FILE__) + '/helper')
+require 'minitest/autorun'
+require 'minitest/pride'
 
 describe "Padrino" do
-  should "be a metagem that requires subgems" do
-    assert_nil defined?(Padrino::Mailer)
-    assert_nil defined?(Padrino::Helpers)
+  it "should be a metagem that requires subgems" do
+    refute defined?(Padrino::Mailer)
+    refute defined?(Padrino::Helpers)
     require File.expand_path('../../lib/padrino.rb', __FILE__)
-    assert_not_nil defined?(Padrino::Mailer)
-    assert_not_nil defined?(Padrino::Helpers)
+    assert defined?(Padrino::Mailer)
+    assert defined?(Padrino::Helpers)
   end
 end

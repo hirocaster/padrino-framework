@@ -1,5 +1,7 @@
+#coding:utf-8
 require File.expand_path(File.dirname(__FILE__) + '/helper')
 require 'logger'
+require 'tempfile'
 
 describe "PadrinoLogger" do
   before do
@@ -36,6 +38,28 @@ describe "PadrinoLogger" do
         Padrino::Logger.setup!
         assert_equal my_stream, Padrino.logger.log
       end
+
+      it 'should use a custom file path' do
+        tempfile = Tempfile.new('app.txt')
+        path = tempfile.path
+        tempfile.unlink
+        Padrino::Logger::Config[:test][:stream] = :to_file
+        Padrino::Logger::Config[:test][:log_path] = path
+        Padrino::Logger.setup!
+        assert_file_exists path
+        File.unlink(path)
+      end
+
+      it 'should use a custom log directory' do
+        tmpdir = Dir.mktmpdir
+        Padrino::Logger::Config[:test][:stream] = :to_file
+        Padrino::Logger::Config[:test][:log_path] = tmpdir
+        Padrino::Logger.setup!
+        log_path = File.join(tmpdir, 'test.log')
+        assert_file_exists log_path
+        File.unlink(log_path)
+        Dir.rmdir(tmpdir)
+      end
     end
 
     it 'should log something' do
@@ -56,6 +80,30 @@ describe "PadrinoLogger" do
       assert_match /logged anyways/, @log.string
       @logger.write "log via alias"
       assert_match /log via alias/, @log.string
+    end
+
+    it 'should not blow up on mixed or broken encodings' do
+      setup_logger(:log_level => :error, :auto_flush => false)
+      binary_data = "\xD0".force_encoding('BINARY')
+      utf8_data = 'фыв'
+      @logger.error binary_data
+      @logger.error utf8_data
+      @logger.flush
+      assert @log.string.include?(utf8_data)
+      assert @log.string.force_encoding('BINARY').include?(binary_data)
+    end
+
+    it 'should sanitize mixed or broken encodings if said so' do
+      encoding = 'windows-1251'
+      setup_logger(:log_level => :error, :auto_flush => false, :sanitize_encoding => encoding)
+      @log.string.encode! encoding
+      binary_data = "\xD0".force_encoding('BINARY')
+      utf8_data = 'фыв'
+      @logger.error binary_data
+      @logger.error utf8_data
+      @logger.flush
+      assert @log.string.force_encoding(encoding).include?("?\n".encode(encoding))
+      assert @log.string.force_encoding(encoding).include?(utf8_data.encode(encoding))
     end
 
     it 'should log an application' do
@@ -148,7 +196,9 @@ describe "alternate logger" do
   before do
     @save_logger = Padrino.logger
     @log = StringIO.new
-    Padrino.logger = FancyLogger.new(@log)
+    new_logger = FancyLogger.new(@log)
+    new_logger.extend(Padrino::Logger::Extensions)
+    capture_io { Padrino.logger = new_logger }
   end
 
   after do
@@ -175,11 +225,34 @@ describe "alternate logger" do
   end
 end
 
+describe "binary logger" do
+  before do
+    @save_logger = Padrino.logger
+    @log = StringIO.new
+    new_logger = Logger.new(@log)
+    new_logger.formatter = proc do |_, _, _, message|
+      "#{message.size}"
+    end
+    capture_io { Padrino.logger = new_logger }
+  end
+
+  after do
+    Padrino.logger = @save_logger
+  end
+
+  it 'should not convert parameters to strings before formatting' do
+    logger.info({:a => 2})
+    assert_equal "1", @log.string
+  end
+end
+
 describe "alternate logger: stdlib logger" do
   before do
     @log = StringIO.new
     @save_logger = Padrino.logger
-    Padrino.logger = Logger.new(@log)
+    new_logger = Logger.new(@log)
+    new_logger.extend(Padrino::Logger::Extensions)
+    capture_io { Padrino.logger = new_logger }
   end
 
   after do
@@ -246,5 +319,50 @@ describe "options :colorize_logging" do
       access_to_mock_app
       assert_match /200 OK/, Padrino.logger.log.string
     end
+  end
+end
+
+describe "options :source_location" do
+  before do
+    Padrino::Logger::Config[:test][:source_location] = true
+    Padrino::Logger.setup!
+  end
+
+  def stub_root(base_path = File.expand_path("."), &block)
+    callable = proc{ |*args| File.join(base_path, *args) }
+    Padrino.stub(:root, callable, &block)
+  end
+
+  it 'should output source_location if :source_location is set to true' do
+    stub_root { Padrino.logger.debug("hello world") }
+    assert_match /\[test\/test_logger\.rb:#{__LINE__-1}\] hello world/, Padrino.logger.log.string
+  end
+
+  it 'should output source_location if file path is relative' do
+    stub_message = "test/test_logger.rb:269:in `test'"
+    Padrino::Logger.logger.stub(:caller, [stub_message]){ stub_root { Padrino.logger.debug("hello relative path") }}
+    assert_match /\[test\/test_logger\.rb:269\] hello relative path/, Padrino.logger.log.string
+  end
+
+  it 'should not output source_location if :source_location is set to false' do
+    Padrino::Logger::Config[:test][:source_location] = false
+    Padrino::Logger.setup!
+    stub_root { Padrino.logger.debug("hello world") }
+    assert_match /hello world/, Padrino.logger.log.string
+    refute_match /\[.+?\] hello world/, Padrino.logger.log.string
+  end
+
+  it 'should not output source_location unless file path is not started with Padrino.root' do
+    stub_root("/unknown/path/") { Padrino.logger.debug("hello boy") }
+    assert_match /hello boy/, Padrino.logger.log.string
+    refute_match /\[.+?\] hello boy/, Padrino.logger.log.string
+  end
+
+  it 'should not output source_location if source file path is started with Padrino.root + vendor' do
+    base_path = File.expand_path(File.dirname(__FILE__) + '/fixtures/')
+    stub_message = File.expand_path(File.dirname(__FILE__) + '/fixtures/vendor/logger.rb') + ":291:in `test'"
+    Padrino::Logger.logger.stub(:caller, [stub_message]) { stub_root(base_path) { Padrino.logger.debug("hello vendor") } }
+    assert_match /hello vendor/, Padrino.logger.log.string
+    refute_match /\[.+?\] hello vendor/, Padrino.logger.log.string
   end
 end

@@ -24,14 +24,14 @@ if PadrinoTasks.load?(:datamapper, defined?(DataMapper))
 
       desc "Migrate up using migrations"
       task :up, [:version] => :load do |t, args|
-        version = args[:version] || ENV['VERSION']
+        version = args[:version] || env_migration_version
         migrate_up!(version)
         puts "<= dm:migrate:up #{version} executed"
       end
 
       desc "Migrate down using migrations"
       task :down, [:version] => :load do |t, args|
-        version = args[:version] || ENV['VERSION']
+        version = args[:version] || env_migration_version
         migrate_down!(version)
         puts "<= dm:migrate:down #{version} executed"
       end
@@ -50,7 +50,7 @@ if PadrinoTasks.load?(:datamapper, defined?(DataMapper))
 
     desc "Create the database"
     task :create => :environment do
-      config = DataMapper.repository.adapter.options.symbolize_keys
+      config = Padrino::Utils.symbolize_keys(DataMapper.repository.adapter.options)
       adapter = config[:adapter]
       user, password, host = config[:user], config[:password], config[:host]
 
@@ -67,7 +67,7 @@ if PadrinoTasks.load?(:datamapper, defined?(DataMapper))
 
     desc "Drop the database (postgres and mysql only)"
     task :drop => :environment do
-      config = DataMapper.repository.adapter.options.symbolize_keys
+      config = Padrino::Utils.symbolize_keys(DataMapper.repository.adapter.options)
       adapter = config[:adapter]
       user, password, host = config[:user], config[:password], config[:host]
 
@@ -86,6 +86,8 @@ if PadrinoTasks.load?(:datamapper, defined?(DataMapper))
     task :setup => [:create, :migrate, :seed]
   end
 
+  task 'db:migrate:down' => 'dm:migrate:down'
+  task 'db:migrate:up' => 'dm:migrate:up'
   task 'db:migrate' => 'dm:migrate'
   task 'db:create'  => 'dm:create'
   task 'db:drop'    => 'dm:drop'

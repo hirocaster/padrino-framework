@@ -51,14 +51,26 @@ module Padrino
       return false if loaded?
       began_at = Time.now
       @_called_from = first_caller
-      set_encoding
       Padrino.logger
       Reloader.lock!
       before_load.each(&:call)
       require_dependencies(*dependency_paths)
       after_load.each(&:call)
       logger.devel "Loaded Padrino in #{Time.now - began_at} seconds"
+      precompile_all_routes!
       Thread.current[:padrino_loaded] = true
+    end
+
+    ##
+    # Precompiles all routes if :precompile_routes is set to true
+    #
+    def precompile_all_routes!
+      mounted_apps.each do |app|
+        app_obj = app.app_obj
+        next unless app_obj.respond_to?(:precompile_routes?) && app_obj.precompile_routes?
+        app_obj.setup_application!
+        logger.devel "Precompiled routes of #{app_obj} (routes size #{app_obj.compiled_router.routes.size})"
+      end
     end
 
     ##
@@ -72,6 +84,7 @@ module Padrino
       @_dependency_paths = nil
       before_load.clear
       after_load.clear
+      global_configurations.clear
       Reloader.clear!
       Thread.current[:padrino_loaded] = nil
     end
@@ -129,11 +142,12 @@ module Padrino
     #   require_dependencies("#{Padrino.root}/lib/**/*.rb")
     #
     def require_dependencies(*paths)
-      options = paths.extract_options!.merge( :cyclic => true )
-      files = paths.flatten.map{ |path| Dir.glob(path).sort_by{ |filename| filename.count('/') } }.flatten.uniq
+      options = { :cyclic => true }.update(paths.last.is_a?(Hash) ? paths.pop : {})
+
+      files = paths.flatten.flat_map{ |path| Dir.glob(path).sort_by{ |filename| filename.count('/') } }.uniq
 
       until files.empty?
-        error, fatal, loaded = nil, nil, nil
+        error = fatal = loaded = nil
 
         files.dup.each do |file|
           begin
@@ -141,6 +155,7 @@ module Padrino
             files.delete(file)
             loaded = true
           rescue NameError, LoadError => error
+            raise if Reloader.exclude.any?{ |path| file.start_with?(path) } || options[:cyclic] == false
             logger.devel "Cyclic dependency reload for #{error.class}: #{error.message}"
           rescue Exception => fatal
             break
@@ -169,18 +184,6 @@ module Padrino
       @_dependency_paths ||= default_dependency_paths + modules_dependency_paths
     end
 
-    # Deprecated
-    def set_load_paths(*)
-      warn 'Padrino.set_load_paths is deprecated. Please, use $LOAD_PATH.concat(paths)'
-      []
-    end
-
-    # Deprecated
-    def load_paths
-      warn 'Padrino.load_paths is deprecated. Please, use Padrino::Application#prerequisites'
-      []
-    end
-
     private
 
     def modules_dependency_paths
@@ -192,8 +195,7 @@ module Padrino
         "#{root}/config/database.rb",
         "#{root}/lib/**/*.rb",
         "#{root}/models/**/*.rb",
-        "#{root}/shared/lib/**/*.rb",
-        "#{root}/shared/models/**/*.rb",
+        "#{root}/shared/**/*.rb",
         "#{root}/config/apps.rb",
       ]
     end

@@ -79,14 +79,14 @@ describe "ModelGenerator" do
     it 'should generate a default type value for fields' do
       current_time = stop_time_for_test.strftime("%Y%m%d%H%M%S")
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-t=bacon', '-d=activerecord') }
-      capture_io { generate(:model, 'person', "name", "age:integer", "email", "-r=#{@apptmp}/sample_project") }
-      migration_file_path = "#{@apptmp}/sample_project/db/migrate/001_create_people.rb"
-      assert_match_in_file(/class CreatePeople < ActiveRecord::Migration/m, migration_file_path)
-      assert_match_in_file(/    create_table :people/m, migration_file_path)
+      capture_io { generate(:model, 'friend', "name", "age:integer", "email", "-r=#{@apptmp}/sample_project") }
+      migration_file_path = "#{@apptmp}/sample_project/db/migrate/001_create_friends.rb"
+      assert_match_in_file(/class CreateFriends < ActiveRecord::Migration/m, migration_file_path)
+      assert_match_in_file(/    create_table :friends/m, migration_file_path)
       assert_match_in_file(/      t.string :name/m,   migration_file_path)
       assert_match_in_file(/      t.integer :age/m,   migration_file_path)
       assert_match_in_file(/      t.string :email/m,  migration_file_path)
-      assert_match_in_file(/    drop_table :people/m, migration_file_path)
+      assert_match_in_file(/    drop_table :friends/m, migration_file_path)
     end
 
     it 'should abort if model name already exists' do
@@ -119,7 +119,8 @@ describe "ModelGenerator" do
   describe "model generator using activerecord" do
     it 'should add activerecord middleware' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-d=activerecord') }
-      assert_match_in_file(/  use ActiveRecord::ConnectionAdapters::ConnectionManagemen/m, "#{@apptmp}/sample_project/app/app.rb")
+      assert_match_in_file(/  use ConnectionPoolManagement/m, "#{@apptmp}/sample_project/app/app.rb")
+      assert_file_exists("#{@apptmp}/sample_project/lib/connection_pool_management_middleware.rb")
     end
 
     it 'should generate model file' do
@@ -148,14 +149,14 @@ describe "ModelGenerator" do
     it 'should generate migration file with given fields' do
       current_time = stop_time_for_test.strftime("%Y%m%d%H%M%S")
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-t=bacon', '-d=activerecord') }
-      capture_io { generate(:model, 'person', "name:string", "age:integer", "email:string", "-r=#{@apptmp}/sample_project") }
-      migration_file_path = "#{@apptmp}/sample_project/db/migrate/001_create_people.rb"
-      assert_match_in_file(/class CreatePeople < ActiveRecord::Migration/m, migration_file_path)
-      assert_match_in_file(/    create_table :people/m, migration_file_path)
+      capture_io { generate(:model, 'friend', "name:string", "age:integer", "email:string", "-r=#{@apptmp}/sample_project") }
+      migration_file_path = "#{@apptmp}/sample_project/db/migrate/001_create_friends.rb"
+      assert_match_in_file(/class CreateFriends < ActiveRecord::Migration/m, migration_file_path)
+      assert_match_in_file(/    create_table :friends/m, migration_file_path)
       assert_match_in_file(/      t.string :name/m,   migration_file_path)
       assert_match_in_file(/      t.integer :age/m,   migration_file_path)
       assert_match_in_file(/      t.string :email/m,  migration_file_path)
-      assert_match_in_file(/    drop_table :people/m, migration_file_path)
+      assert_match_in_file(/    drop_table :friends/m, migration_file_path)
     end
   end
 
@@ -170,8 +171,9 @@ describe "ModelGenerator" do
     end
 
     it 'should add activerecord middleware' do
-      capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-d=activerecord') }
-      assert_match_in_file(/  use ActiveRecord::ConnectionAdapters::ConnectionManagemen/m, "#{@apptmp}/sample_project/app/app.rb")
+      capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-d=minirecord') }
+      assert_match_in_file(/  use ConnectionPoolManagement/m, "#{@apptmp}/sample_project/app/app.rb")
+      assert_file_exists("#{@apptmp}/sample_project/lib/connection_pool_management_middleware.rb")
     end
 
     it 'should generate model file' do
@@ -212,6 +214,12 @@ describe "ModelGenerator" do
 
   # DATAMAPPER
   describe "model generator using datamapper" do
+    it 'should add activerecord middleware' do
+      capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-d=datamapper') }
+      assert_match_in_file(/  use IdentityMap/m, "#{@apptmp}/sample_project/app/app.rb")
+      assert_file_exists("#{@apptmp}/sample_project/lib/identity_map_middleware.rb")
+    end
+
     it 'should generate model file with camelized name' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-t=bacon', '-d=datamapper') }
       capture_io { generate(:model, 'ChunkyBacon', "-r=#{@apptmp}/sample_project") }
@@ -231,12 +239,12 @@ describe "ModelGenerator" do
     it 'should properly generate version numbers' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-d=datamapper') }
       capture_io { generate(:model, 'user', "name:string", "age:integer", "created_at:datetime", "-r=#{@apptmp}/sample_project") }
-      capture_io { generate(:model, 'person', "name:string", "age:integer", "created_at:datetime", "-r=#{@apptmp}/sample_project") }
+      capture_io { generate(:model, 'friend', "name:string", "age:integer", "created_at:datetime", "-r=#{@apptmp}/sample_project") }
       capture_io { generate(:model, 'account', "name:string", "age:integer", "created_at:datetime", "-r=#{@apptmp}/sample_project") }
       assert_match_in_file(/class User\n\s+include DataMapper::Resource/m, "#{@apptmp}/sample_project/models/user.rb")
       assert_match_in_file(/migration 1, :create_users do/m, "#{@apptmp}/sample_project/db/migrate/001_create_users.rb")
-      assert_match_in_file(/class Person\n\s+include DataMapper::Resource/m, "#{@apptmp}/sample_project/models/person.rb")
-      assert_match_in_file(/migration 2, :create_people do/m, "#{@apptmp}/sample_project/db/migrate/002_create_people.rb")
+      assert_match_in_file(/class Friend\n\s+include DataMapper::Resource/m, "#{@apptmp}/sample_project/models/friend.rb")
+      assert_match_in_file(/migration 2, :create_friends do/m, "#{@apptmp}/sample_project/db/migrate/002_create_friends.rb")
       assert_match_in_file(/class Account\n\s+include DataMapper::Resource/m, "#{@apptmp}/sample_project/models/account.rb")
       assert_match_in_file(/migration 3, :create_accounts do/m, "#{@apptmp}/sample_project/db/migrate/003_create_accounts.rb")
     end
@@ -244,15 +252,15 @@ describe "ModelGenerator" do
     it 'should generate migration with given fields' do
       current_time = stop_time_for_test.strftime("%Y%m%d%H%M%S")
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-d=datamapper') }
-      capture_io { generate(:model, 'person', "name:string", "created_at:date_time", "email:string", "-r=#{@apptmp}/sample_project") }
-      assert_match_in_file(/class Person\n\s+include DataMapper::Resource/m, "#{@apptmp}/sample_project/models/person.rb")
-      migration_file_path = "#{@apptmp}/sample_project/db/migrate/001_create_people.rb"
-      assert_match_in_file(/migration 1, :create_people do/m, migration_file_path)
-      assert_match_in_file(/create_table :people do/m, migration_file_path)
+      capture_io { generate(:model, 'friend', "name:string", "created_at:date_time", "email:string", "-r=#{@apptmp}/sample_project") }
+      assert_match_in_file(/class Friend\n\s+include DataMapper::Resource/m, "#{@apptmp}/sample_project/models/friend.rb")
+      migration_file_path = "#{@apptmp}/sample_project/db/migrate/001_create_friends.rb"
+      assert_match_in_file(/migration 1, :create_friends do/m, migration_file_path)
+      assert_match_in_file(/create_table :friends do/m, migration_file_path)
       assert_match_in_file(/column :name, DataMapper::Property::String/m, migration_file_path)
       assert_match_in_file(/column :created_at, DataMapper::Property::DateTime/m, migration_file_path)
       assert_match_in_file(/column :email, DataMapper::Property::String/m, migration_file_path)
-      assert_match_in_file(/drop_table :people/m, migration_file_path)
+      assert_match_in_file(/drop_table :friends/m, migration_file_path)
     end
   end
 
@@ -274,15 +282,15 @@ describe "ModelGenerator" do
     it 'should generate migration file with given properties' do
       current_time = stop_time_for_test.strftime("%Y%m%d%H%M%S")
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-d=sequel') }
-      capture_io { generate(:model, 'person', "name:string", "age:integer", "created:datetime", "-r=#{@apptmp}/sample_project") }
-      migration_file_path = "#{@apptmp}/sample_project/db/migrate/001_create_people.rb"
-      assert_match_in_file(/class Person < Sequel::Model/m, "#{@apptmp}/sample_project/models/person.rb")
+      capture_io { generate(:model, 'friend', "name:string", "age:integer", "created:datetime", "-r=#{@apptmp}/sample_project") }
+      migration_file_path = "#{@apptmp}/sample_project/db/migrate/001_create_friends.rb"
+      assert_match_in_file(/class Friend < Sequel::Model/m, "#{@apptmp}/sample_project/models/friend.rb")
       assert_match_in_file(/Sequel\.migration do/m, migration_file_path)
-      assert_match_in_file(/create_table :people/m, migration_file_path)
+      assert_match_in_file(/create_table :friends/m, migration_file_path)
       assert_match_in_file(/String :name/m,   migration_file_path)
       assert_match_in_file(/Integer :age/m,   migration_file_path)
       assert_match_in_file(/DateTime :created/m,  migration_file_path)
-      assert_match_in_file(/drop_table :people/m, migration_file_path)
+      assert_match_in_file(/drop_table :friends/m, migration_file_path)
     end
   end
 
@@ -424,27 +432,6 @@ describe "ModelGenerator" do
       assert_match_in_file(/describe "SomeUser Model"/m, "#{@apptmp}/sample_project/test/subby/models/some_user_test.rb")
       assert_match_in_file(/@some_user = SomeUser.new/m, "#{@apptmp}/sample_project/test/subby/models/some_user_test.rb")
       assert_match_in_file(/@some_user\.should\.not\.be\.nil/m, "#{@apptmp}/sample_project/test/subby/models/some_user_test.rb")
-      assert_match_in_file(/'(\/\.\.){2}\/test/m, "#{@apptmp}/sample_project/test/subby/models/some_user_test.rb")
-    end
-
-    # RIOT
-    it 'should generate test file for riot' do
-      capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-t=riot', '-d=activerecord') }
-      capture_io { generate(:app, 'subby', "-r=#{@apptmp}/sample_project") }
-      capture_io { generate(:model, 'SomeUser', "-r=#{@apptmp}/sample_project") }
-      assert_match_in_file(/context "SomeUser Model" do/m, "#{@apptmp}/sample_project/test/models/some_user_test.rb")
-      assert_match_in_file(/SomeUser.new/m, "#{@apptmp}/sample_project/test/models/some_user_test.rb")
-      assert_match_in_file(/asserts\("that record is not nil"\) \{ \!topic.nil\? \}/m, "#{@apptmp}/sample_project/test/models/some_user_test.rb")
-      assert_match_in_file(/'(\/\.\.){1}\/test/m, "#{@apptmp}/sample_project/test/models/some_user_test.rb")
-    end
-
-    it 'should generate test file for riot in specified app' do
-      capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=none', '-t=riot', '-d=activerecord') }
-      capture_io { generate(:app, 'subby', "-r=#{@apptmp}/sample_project") }
-      capture_io { generate(:model, 'SomeUser', "-a=/subby", "-r=#{@apptmp}/sample_project") }
-      assert_match_in_file(/context "SomeUser Model" do/m, "#{@apptmp}/sample_project/test/subby/models/some_user_test.rb")
-      assert_match_in_file(/SomeUser.new/m, "#{@apptmp}/sample_project/test/subby/models/some_user_test.rb")
-      assert_match_in_file(/asserts\("that record is not nil"\) \{ \!topic.nil\? \}/m, "#{@apptmp}/sample_project/test/subby/models/some_user_test.rb")
       assert_match_in_file(/'(\/\.\.){2}\/test/m, "#{@apptmp}/sample_project/test/subby/models/some_user_test.rb")
     end
 

@@ -1,6 +1,7 @@
 require 'padrino-core/tasks'
 require 'padrino-gen/command'
-require 'active_support/ordered_hash'
+require 'padrino-gen/core_ext/string'
+require 'yaml'
 
 module Padrino
   ##
@@ -33,7 +34,7 @@ module Padrino
       # Return an ordered list of task with their class.
       #
       def mappings
-        @_mappings ||= ActiveSupport::OrderedHash.new
+        @_mappings ||= {}
       end
 
       ##
@@ -67,7 +68,7 @@ module Padrino
 end
 
 # Add our generators to Padrino::Generators.
-Padrino::Generators.load_paths << Dir[File.dirname(__FILE__) + '/padrino-gen/generators/{project,app,mailer,controller,model,migration,plugin,component,task}.rb']
+Padrino::Generators.load_paths << Dir[File.dirname(__FILE__) + '/padrino-gen/generators/{project,app,mailer,controller,helper,model,migration,plugin,component,task}.rb']
 
 # Add our tasks to padrino-core.
 Padrino::Tasks.files << Dir[File.dirname(__FILE__) + "/padrino-gen/padrino-tasks/**/*.rb"]

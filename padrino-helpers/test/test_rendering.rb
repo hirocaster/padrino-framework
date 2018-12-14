@@ -1,5 +1,6 @@
 require File.expand_path(File.dirname(__FILE__) + '/helper')
 require 'slim'
+require 'liquid'
 
 describe "Rendering" do
   def setup
@@ -87,6 +88,26 @@ describe "Rendering" do
       assert_equal "js file", body
     end
 
+    it 'should set and restore layout in controllers' do
+      create_layout :boo, "boo is a <%= yield %>"
+      create_layout :moo, "moo is a <%= yield %>"
+      create_view :foo, "liquid file", :format => :liquid
+      mock_app do
+        layout :boo
+        controller :moo do
+          layout :moo
+          get('/liquid') { render :foo }
+        end
+        controller :boo do
+          get('/liquid') { render :foo }
+        end
+      end
+      get "/moo/liquid"
+      assert_equal "moo is a liquid file", body
+      get "/boo/liquid"
+      assert_equal "boo is a liquid file", body
+    end
+
     it 'should use correct layout for each format' do
       create_layout :application, "this is an <%= yield %>"
       create_layout :application, "document start <%= yield %> end", :format => :xml
@@ -114,6 +135,32 @@ describe "Rendering" do
       assert_equal "html file", body
       get "/content_type_test.xml"
       assert_equal "html file", body
+    end
+
+    it 'should find proper templates when content_type is set by string' do
+      create_layout :error, "layout<%= yield %>"
+      create_view :e404, "404 file"
+
+      mock_app do
+        not_found do
+          content_type 'text/html'
+          render 'e404', :layout => :error
+        end
+      end
+      get '/missing'
+      assert_equal 'layout404 file', body
+    end
+
+    it 'should work with set content type not contained in rack-types' do
+      create_view "index.md.erb", "Hello"
+      mock_app do
+        get("/") {
+          content_type "text/x-markdown; charset=UTF-8"
+          render "index.erb", { :layout => nil }
+        }
+      end
+      get "/"
+      assert_equal "Hello", body
     end
 
     it 'should not use html file when DEFAULT_RENDERING_OPTIONS[:strict_format] == true' do
@@ -537,12 +584,14 @@ describe "Rendering" do
 
     it 'should renders erb with blocks' do
       mock_app do
-        def container
-          @_out_buf << "THIS."
-          yield
-          @_out_buf << "SPARTA!"
+        helpers do
+          def container
+            @_out_buf << "THIS."
+            yield
+            @_out_buf << "SPARTA!"
+          end
+          def is; "IS."; end
         end
-        def is; "IS."; end
         get '/' do
           render :erb, '<% container do %> <%= is %> <% end %>'
         end
@@ -571,6 +620,23 @@ describe "Rendering" do
       get '/with_layout'
       assert ok?
       assert_equal 'this is a <span>span</span>', body
+    end
+
+    it 'should render unescaped html on == token (Erubis and Erubi)' do
+      skip if ENV['ERB_ENGINE'] == 'stdlib'
+      mock_app do
+        layout do
+          "<%= yield %>"
+        end
+
+        get "/" do
+          render  :erb, '<%== "<script></script>" %>'
+        end
+      end
+
+      get "/"
+      assert ok?
+      assert_equal "<script></script>", body
     end
 
     it 'should render haml to a SafeBuffer' do
@@ -640,7 +706,7 @@ describe "Rendering" do
       class Application < Sinatra::Base
         register Padrino::Rendering
         get '/' do
-          render :post, :views => File.dirname(__FILE__)+'/fixtures/apps/views/blog' 
+          render :post, :views => File.dirname(__FILE__)+'/fixtures/apps/views/blog'
         end
       end
       @app = Application.new
@@ -688,6 +754,26 @@ describe "Rendering" do
     it 'should raise error on registering things to Padrino::Application' do
       assert_raises(RuntimeError) do
         Padrino::Application.register Padrino::Rendering
+      end
+    end
+  end
+
+  describe 'sinatra template helpers' do
+    it "should respect default_content_type option defined by sinatra" do
+      mock_app do
+        get(:index){ builder "xml.foo" }
+      end
+      get '/'
+      assert_equal "application/xml;charset=utf-8", response['Content-Type']
+    end
+  end
+
+  describe 'rendering with helpers that use render' do
+    %W{erb haml slim}.each do |engine|
+      it "should work with #{engine}" do
+        @app = RenderDemo
+        get "/double_dive_#{engine}"
+        assert_response_has_tag '.outer .wrapper form .inner .core'
       end
     end
   end

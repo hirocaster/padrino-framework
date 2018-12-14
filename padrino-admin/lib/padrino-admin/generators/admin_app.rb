@@ -49,7 +49,7 @@ module Padrino
 
           tmp_ext = options[:renderer] || fetch_component_choice(:renderer)
           unless supported_ext.include?(tmp_ext.to_sym)
-            say "<= Your are using '#{tmp_ext}' and for admin we only support '#{supported_ext.join(', ')}'. Please use -e haml or -e erb or -e slim", :yellow
+            say "<= You are using '#{tmp_ext}' and for admin we only support '#{supported_ext.join(', ')}'. Please use #{supported_ext.map { |ext| '-e ' + ext.to_s }.join(' or ')}", :yellow
             raise SystemExit
           end
 
@@ -76,7 +76,8 @@ module Padrino
           template  "templates/app.rb.tt", destination_root(@admin_path + "/app.rb")
           inject_into_file destination_root('config/apps.rb'), "\nPadrino.mount(\"#{@app_name}::#{@admin_name}\", :app_file => Padrino.root('#{@admin_path}/app.rb')).to(\"/#{@admin_path}\")\n", :before => /^Padrino.mount.*\.to\('\/'\)$/
           unless options[:destroy]
-            insert_middleware 'ActiveRecord::ConnectionAdapters::ConnectionManagement', @admin_path if [:minirecord, :activerecord].include?(orm)
+            insert_middleware 'ConnectionPoolManagement', @admin_path if [:minirecord, :activerecord].include?(orm)
+            insert_middleware 'IdentityMap', @admin_path if orm == :datamapper
           end
 
           params = [
@@ -133,6 +134,8 @@ module Padrino
             add_project_module @model_plural
             require_dependencies('bcrypt')
           end
+
+          require_dependencies 'activesupport', :version => ">= 3.1"
 
           # A nicer select box.
           # TODO FIXME This doesn't make much sense in here. Review.

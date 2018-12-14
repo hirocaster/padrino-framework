@@ -296,14 +296,14 @@ describe "PadrinoCache" do
     get '/404'
     assert_equal 'fancy 404', body
     assert_equal 404, status
-    assert_equal nil, @app.cache['/404']
+    assert_nil @app.cache['/404']
     get '/404'
     assert_equal 'fancy 404', body
     assert_equal 404, status
     get '/503'
     assert_equal 'fancy 503', body
     assert_equal 503, status
-    assert_equal nil, @app.cache['/503']
+    assert_nil @app.cache['/503']
     get '/503'
     assert_equal 'fancy 503', body
     assert_equal 503, status
@@ -456,5 +456,69 @@ describe "PadrinoCache" do
     Time.stub(:now, Time.now + 5.5) { get "/foo"; get "/bar" }
     assert_equal 4, called_times_a
     assert_equal 2, called_times_b
+  end
+
+  it "preserve the app's `caching` setting if set before registering the module" do
+    mock_app do
+      enable :caching
+      register Padrino::Cache
+    end
+
+    assert @app.caching
+  end
+
+  it "preserve the app's `cache` setting if set before registering the module" do
+    mock_app do
+      set :cache, Padrino::Cache.new(:Memory)
+      register Padrino::Cache
+    end
+
+    adapter = @app.cache.adapter
+    while adapter.respond_to? :adapter
+      adapter = adapter.adapter
+    end
+    assert_kind_of Moneta::Adapters::Memory, adapter
+  end
+
+  it "should check key existence" do
+    count1, count2 = 0, 0
+    mock_app do
+      register Padrino::Cache
+      enable :caching
+      get "/" do
+        cache(:foo) do
+          count1 += 1
+          nil
+        end
+        count1.inspect
+      end
+
+      get "/object" do
+        cache_object(:bar) do
+          count2 += 1
+          nil
+        end
+        count2.inspect
+      end
+    end
+    2.times { get "/" }
+    assert_equal "1", body
+    2.times { get "/object" }
+    assert_equal "1", body
+  end
+
+  it 'should cache full mime type of content_type' do
+    mock_app do
+      register Padrino::Cache
+      enable :caching
+      get '/foo', :cache => true do
+        content_type :json, :charset => 'utf-8'
+        '{}'
+      end
+    end
+    get "/foo"
+    assert_equal 'application/json;charset=utf-8', last_response.content_type
+    get "/foo"
+    assert_equal 'application/json;charset=utf-8', last_response.content_type
   end
 end

@@ -1,3 +1,4 @@
+require 'padrino/core_ext/output_safety'
 require 'padrino-support'
 require 'pathname'
 
@@ -33,6 +34,11 @@ module Padrino
     IGNORE_FILE_PATTERN = [
       /~$/ # This is for Gedit
     ] unless defined?(IGNORE_FILE_PATTERN)
+
+    ##
+    # Defines common content-type alias mappings.
+    #
+    CONTENT_TYPE_ALIASES = { :htm => :html }
 
     ##
     # Default options used in the resolve_template-method.
@@ -91,30 +97,6 @@ module Padrino
       def layout(name=:layout, &block)
         return super(name, &block) if block_given?
         @layout = name
-      end
-
-      ##
-      # Returns the cached template file to render for a given url,
-      # content_type and locale. Deprecated since 0.12.1
-      #
-      # @param [Array<template_path, content_type, locale>] render_options
-      #
-      def fetch_template_file(render_options)
-        logger.warn "##{__method__} is deprecated"
-        (@_cached_templates ||= {})[render_options]
-      end
-
-      ##
-      # Caches the template file for the given rendering options. Deprecated since 0.12.1
-      #
-      # @param [String] template_file
-      #   The path of the template file.
-      #
-      # @param [Array<template_path, content_type, locale>] render_options
-      #
-      def cache_template_file!(template_file, render_options)
-        logger.warn "##{__method__} is deprecated"
-        (@_cached_templates ||= {})[render_options] = template_file || []
       end
 
       ##
@@ -197,6 +179,50 @@ module Padrino
 
       private
 
+      def render_like_sinatra(engine, data, options={}, locals={}, &block)
+        # merge app-level options
+        engine_options = settings.respond_to?(engine) ? settings.send(engine) : {}
+        options = engine_options.merge(options)
+
+        # extract generic options
+        locals          = options.delete(:locals) || locals         || {}
+        views           = options.delete(:views)  || settings.views || "./views"
+        layout          = options[:layout]
+        layout          = false if layout.nil? && options.include?(:layout)
+        eat_errors      = layout.nil?
+        layout          = engine_options[:layout] if layout.nil? or (layout == true && engine_options[:layout] != false)
+        layout          = @default_layout         if layout.nil? or layout == true
+        layout_options  = options.delete(:layout_options) || {}
+        content_type    = options.delete(:default_content_type)
+        content_type    = options.delete(:content_type)   || content_type
+        layout_engine   = options.delete(:layout_engine)  || engine
+        scope           = options.delete(:scope)          || self
+        options.delete(:layout)
+
+        # set some defaults
+        options[:default_encoding] ||= settings.default_encoding
+
+        # compile and render template
+        begin
+          layout_was      = @default_layout
+          @default_layout = false
+          template        = compile_template(engine, data, options, views)
+          output          = template.render(scope, locals, &block)
+        ensure
+          @default_layout = layout_was
+        end
+
+        # render layout
+        if layout
+          layout_engine_options = settings.respond_to?(layout_engine) ? settings.send(layout_engine).dup : {}
+          options = layout_engine_options.update(:views => views, :layout => false, :eat_errors => eat_errors, :scope => scope).update(layout_options)
+          catch(:layout_missing) { return render_like_sinatra(layout_engine, layout, options, locals) { output } }
+        end
+
+        output.extend(Sinatra::Base::ContentTyped).content_type = content_type if content_type
+        output
+      end
+
       ##
       # Enhancing Sinatra render functionality for:
       #
@@ -221,31 +247,17 @@ module Padrino
         # This means that no engine was explicitly defined
         data, engine = resolve_template(engine, options) if data.nil?
 
-        options[:layout] ||= false unless Rendering.engine_configurations.has_key?(engine)
+        ensure_rendering_engine(engine) || (options[:layout] ||= @layout || false)
 
         # Cleanup the template.
         @current_engine, engine_was = engine, @current_engine
-        @_out_buf,  buf_was = ActiveSupport::SafeBuffer.new, @_out_buf
+        @_out_buf,  buf_was = SafeBuffer.new, @_out_buf
 
         # Pass arguments to Sinatra render method.
-        super(engine, data, with_layout(options), locals, &block)
+        render_like_sinatra(engine, data, with_layout(options), locals, &block)
       ensure
         @current_engine = engine_was
         @_out_buf = buf_was
-      end
-
-      ##
-      # Returns the located layout tuple to be used for the rendered template
-      # (if available). Deprecated since 0.12.1
-      #
-      # @example
-      #   resolve_layout
-      #   # => ["/layouts/custom", :erb]
-      #   # => [nil, nil]
-      #
-      def resolved_layout
-        logger.warn "##{__method__} is deprecated"
-        resolve_template(settings.fetch_layout_path, :raise_exceptions => false, :strict_format => true) || [nil, nil]
       end
 
       ##
@@ -309,7 +321,7 @@ module Padrino
           template_candidates = glob_templates(layouts_path, template_path)
           selected_template = select_template(template_candidates, *rendering_options)
 
-          fail TemplateNotFound, "Layout '#{template_path}' not found in '#{layouts_path}'" if !selected_template && layout.present?
+          fail TemplateNotFound, "Layout '#{template_path}' not found in '#{layouts_path}'" if !selected_template && layout
           selected_template
         end
       end
@@ -320,7 +332,7 @@ module Padrino
         return options if layout == false
 
         layout = @layout if !layout || layout == true
-        return options if settings.templates.has_key?(:layout) && layout.blank?
+        return options if settings.templates.has_key?(:layout) && !layout
 
         if layout.kind_of?(String) && Pathname.new(layout).absolute?
           layout_path, _, layout = layout.rpartition('/')
@@ -333,8 +345,8 @@ module Padrino
 
       def glob_templates(views_path, template_path)
         parts = []
-        parts << views_path if views_path.present?
-        if respond_to?(:request) && request.respond_to?(:controller) && request.controller.present? && Pathname.new(template_path).relative?
+        parts << views_path if views_path
+        if respond_to?(:request) && request.respond_to?(:controller) && request.controller && Pathname.new(template_path).relative?
           parts << "{,#{request.controller}}"
         end
         parts << template_path.chomp(File.extname(template_path)) + '.*'
@@ -345,13 +357,14 @@ module Padrino
       end
 
       def select_template(templates, template_path, content_type, _locale)
-        simple_content_type = [:html, :plain].include?(content_type)
+        symbol = content_type_symbol(content_type)
+        simple_content_type = [:html, :plain].include?(symbol)
         target_path, target_engine = path_and_engine(template_path)
 
-        templates.find{ |file,_| file.to_s == "#{target_path}.#{locale}.#{content_type}" } ||
+        templates.find{ |file,_| file.to_s == "#{target_path}.#{locale}.#{symbol}" } ||
         templates.find{ |file,_| file.to_s == "#{target_path}.#{locale}" && simple_content_type } ||
         templates.find{ |file,engine| engine == target_engine || File.extname(file.to_s) == ".#{target_engine}" } ||
-        templates.find{ |file,_| file.to_s == "#{target_path}.#{content_type}" } ||
+        templates.find{ |file,_| file.to_s == "#{target_path}.#{symbol}" } ||
         templates.find{ |file,_| file.to_s == "#{target_path}" && simple_content_type }
       end
 
@@ -361,7 +374,25 @@ module Padrino
         path = path.chomp(extname)
         path.insert(0, '/') unless Pathname.new(path).absolute?
         path = path.squeeze('/').sub(relative, '') if relative
-        [path.to_sym, engine]
+        [path.to_sym, engine.to_sym]
+      end
+
+      def ensure_rendering_engine(engine)
+        return true if settings.respond_to?(engine)
+        return nil unless engine == :erb
+        require 'erb'
+      rescue LoadError
+      else
+        require 'padrino/rendering/erb_template'
+        settings.set :erb, Padrino::Rendering.engine_configurations[:erb]
+      end
+
+      def content_type_symbol(type)
+        if defined?(::Rack::Mime::MIME_TYPES) && type.kind_of?(String) &&
+           ::Rack::Mime::MIME_TYPES.key(type)
+          type = ::Rack::Mime::MIME_TYPES.key(type).sub(/\./,'').to_sym
+        end
+        CONTENT_TYPE_ALIASES[type] || type
       end
     end
   end
@@ -375,6 +406,15 @@ unless defined? Padrino::Rendering::HamlTemplate
   rescue LoadError
   else
     require 'padrino/rendering/haml_template'
+  end
+end
+
+unless defined? Padrino::Rendering::HamlitTemplate
+  begin
+    require 'hamlit'
+  rescue LoadError
+  else
+    require 'padrino/rendering/hamlit_template'
   end
 end
 
@@ -393,5 +433,14 @@ unless defined? Padrino::Rendering::SlimTemplate
   rescue LoadError
   else
     require 'padrino/rendering/slim_template'
+  end
+end
+
+unless defined? Padrino::Rendering::ErubiTemplate
+  begin
+    require 'erubi'
+  rescue LoadError
+  else
+    require 'padrino/rendering/erubi_template'
   end
 end

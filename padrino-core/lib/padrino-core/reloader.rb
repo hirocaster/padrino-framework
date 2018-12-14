@@ -73,8 +73,9 @@ module Padrino
     # We lock dependencies sets to prevent reloading of protected constants
     #
     def lock!
-      klasses = ObjectSpace.classes do |klass|
-        klass._orig_klass_name.split('::').first
+      klasses = Storage.send(:object_classes) do |klass|
+        original_klass_name = constant_name(klass)
+        original_klass_name.split('::').first if original_klass_name
       end
       klasses |= Padrino.mounted_apps.map(&:app_class)
       exclude_constants.merge(klasses)
@@ -221,7 +222,9 @@ module Padrino
     #
     def files_for_rotation
       files = Set.new
-      files += Dir.glob("#{Padrino.root}/{lib,models,shared}/**/*.rb")
+      Padrino.dependency_paths.each do |path|
+        files += Dir.glob(path)
+      end
       reloadable_apps.each do |app|
         files << app.app_file
         files += Dir.glob(app.app_obj.prerequisites)
@@ -241,7 +244,7 @@ module Padrino
     # Tells if a constant should be excluded from Reloader routines.
     #
     def constant_excluded?(const)
-      external_constant?(const) || (exclude_constants - include_constants).any?{ |excluded_constant| const._orig_klass_name.start_with?(excluded_constant) }
+      external_constant?(const) || (exclude_constants - include_constants).any?{ |excluded_constant| constant_name(const).start_with?(excluded_constant) }
     end
 
     ##
@@ -251,26 +254,29 @@ module Padrino
     #
     def external_constant?(const)
       sources = object_sources(const)
-      begin
-        if sample = ObjectSpace.each_object(const).first
-          sources += object_sources(sample)
-        end
-      rescue RuntimeError => error # JRuby 1.7.12 fails to ObjectSpace.each_object
-        raise unless RUBY_PLATFORM =='java' && error.message.start_with?("ObjectSpace is disabled")
-      end
+      # consider methodless constants not external
+      return false if sources.empty?
       !sources.any?{ |source| source.start_with?(Padrino.root) }
     end
 
     ##
-    # Gets all the sources in which target's class or instance methods are defined.
+    # Gets all the sources in which target class is defined.
     #
     # Note: Method#source_location is for Ruby 1.9.3+ only.
     #
     def object_sources(target)
       sources = Set.new
       target.methods.each do |method_name|
+        next unless method_name.kind_of?(Symbol)
         method_object = target.method(method_name)
-        if method_object.owner == (target.class == Class ? target.singleton_class : target.class)
+        if method_object.owner == target.singleton_class
+          sources << method_object.source_location.first
+        end
+      end
+      target.instance_methods.each do |method_name|
+        next unless method_name.kind_of?(Symbol)
+        method_object = target.instance_method(method_name)
+        if method_object.owner == target
           sources << method_object.source_location.first
         end
       end
@@ -289,7 +295,10 @@ module Padrino
     # Return the apps that allow reloading.
     #
     def reloadable_apps
-      Padrino.mounted_apps.select{ |app| app.app_obj.respond_to?(:reload) && app.app_obj.reload? }
+      Padrino.mounted_apps.select do |app|
+        next unless app.app_file.start_with?(Padrino.root)
+        app.app_obj.respond_to?(:reload) && app.app_obj.reload?
+      end
     end
 
     ##
@@ -300,6 +309,12 @@ module Padrino
       yield
     ensure
       $-v = verbosity_level
+    end
+
+    def constant_name(constant)
+      constant._orig_klass_name
+    rescue NoMethodError
+      constant.name
     end
   end
 end

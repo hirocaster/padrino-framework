@@ -54,6 +54,8 @@ end
 
 desc "Run application test suite"
 task 'test' => test_tasks.map { |f| "test:\#{f}" }
+
+task :default => :test
 TEST
 
 SHOULDA_MODEL_TEST = (<<-TEST).gsub(/^ {10}/, '') unless defined?(SHOULDA_MODEL_TEST)
@@ -89,11 +91,12 @@ TEST
 def setup_test
   require_dependencies 'rack-test', :require => 'rack/test', :group => 'test'
   require_dependencies 'shoulda', :group => 'test'
+  require_dependencies 'test-unit', :group => 'test'
   insert_test_suite_setup SHOULDA_SETUP
   create_file destination_root("test/test.rake"), SHOULDA_RAKE
 end
 
-def generate_controller_test(name)
+def generate_controller_test(name, path = nil)
   shoulda_contents = SHOULDA_CONTROLLER_TEST.gsub(/!NAME!/, name.to_s.underscore.camelize)
   controller_test_path = File.join('test',options[:app],'controllers',"#{name.to_s.underscore}_controller_test.rb")
   create_file destination_root(controller_test_path), shoulda_contents, :skip => true

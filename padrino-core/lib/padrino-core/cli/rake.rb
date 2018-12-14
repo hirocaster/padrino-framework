@@ -10,7 +10,6 @@ end
 
 module PadrinoTasks
   def self.init(init=false)
-    $LOAD_PATH.unshift(File.expand_path("lib"))
     Padrino::Tasks.files.flatten.uniq.each { |rakefile| Rake.application.add_import(rakefile) rescue puts "<= Failed load #{ext}" }
     load(File.expand_path('../rake_tasks.rb', __FILE__))
     Rake.application.load_imports

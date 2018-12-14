@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 module Padrino
   module Helpers
     ###
@@ -91,7 +90,7 @@ module Padrino
       # Attempts to pluralize the singular word unless count is 1. If plural is supplied, it will use that when count is > 1,
       # otherwise it will use inflector to determine the plural form.
       #
-      # @param [Fixnum] count
+      # @param [Integer] count
       #   The count which determines pluralization.
       # @param [String] singular
       #   The word to be pluralized if appropriate based on +count+.
@@ -115,7 +114,7 @@ module Padrino
       #   The text to be truncated.
       # @param [Hash] options
       #   Formatting options for the truncation.
-      # @option options [Fixnum] :length (30)
+      # @option options [Integer] :length (30)
       #   The number of characters before truncation occurs.
       # @option options [String] :omission ("...")
       #   The characters that are placed after the truncated text.
@@ -126,7 +125,7 @@ module Padrino
       #   truncate("Once upon a time in a world far far away", :length => 8) => "Once upon..."
       #
       def truncate(text, options={})
-        options.reverse_merge!(:length => 30, :omission => "...")
+        options = { :length => 30, :omission => "..." }.update(options)
         if text
           len = options[:length] - options[:omission].length
           chars = text
@@ -142,7 +141,7 @@ module Padrino
       #   The text to be truncated.
       # @param [Hash] options
       #   Formatting options for the truncation.
-      # @option options [Fixnum] :length (30)
+      # @option options [Integer] :length (30)
       #   The number of words before truncation occurs.
       # @option options [String] :omission ("...")
       #   The characters that are placed after the truncated text.
@@ -153,7 +152,7 @@ module Padrino
       #   truncate_words("Once upon a time in a world far far away", :length => 8) => "Once upon a time in a world far..."
       #
       def truncate_words(text, options={})
-        options.reverse_merge!(:length => 30, :omission => "...")
+        options = { :length => 30, :omission => "..." }.update(options)
         if text
           words = text.split()
           words[0..(options[:length]-1)].join(' ') + (words.length > options[:length] ? options[:omission] : '')
@@ -169,7 +168,7 @@ module Padrino
       #     The text to be wrapped.
       #   @param [Hash] options
       #     Formatting options for the wrapping.
-      #   @option options [Fixnum] :line_width (80)
+      #   @option options [Integer] :line_width (80)
       #     The line width before a wrap should occur.
       #
       # @return [String] The text with line wraps for lines longer then +line_width+.
@@ -178,11 +177,11 @@ module Padrino
       #   word_wrap('Once upon a time', :line_width => 8) => "Once upon\na time"
       #
       def word_wrap(text, *args)
-        options = args.extract_options!
-        unless args.blank?
+        options = args.last.is_a?(Hash) ? args.pop : {}
+        unless args.empty?
           options[:line_width] = args[0] || 80
         end
-        options.reverse_merge!(:line_width => 80)
+        options = { :line_width => 80 }.update(options)
 
         text.split("\n").map do |line|
           line.length > options[:line_width] ? line.gsub(/(.{1,#{options[:line_width]}})(\s+|$)/, "\\1\n").strip : line
@@ -215,10 +214,9 @@ module Padrino
       #   # => Lorem ipsum <strong class="custom">dolor</strong> sit amet
       #
       def highlight(text, words, *args)
-        options = args.extract_options!
-        options.reverse_merge!(:highlighter => '<strong class="highlight">\1</strong>')
+        options = { :highlighter => '<strong class="highlight">\1</strong>' }.update(args.last.is_a?(Hash) ? args.pop : {})
 
-        if text.blank? || words.blank?
+        if text.empty? || words.empty?
           text
         else
           match = Array(words).map { |p| Regexp.escape(p) }.join('|')
@@ -291,42 +289,43 @@ module Padrino
         distance_in_minutes = (((to_time.to_i - from_time.to_i).abs)/60).round
         distance_in_seconds = ((to_time.to_i - from_time.to_i).abs).round
 
-        I18n.with_options :locale => options[:locale], :scope => :'datetime.distance_in_words' do |locale|
+        phrase, locals =
           case distance_in_minutes
             when 0..1
-              return distance_in_minutes == 0 ?
-                     locale.t(:less_than_x_minutes, :count => 1) :
-                     locale.t(:x_minutes, :count => distance_in_minutes) unless include_seconds
-
-              case distance_in_seconds
-                when 0..4   then locale.t :less_than_x_seconds, :count => 5
-                when 5..9   then locale.t :less_than_x_seconds, :count => 10
-                when 10..19 then locale.t :less_than_x_seconds, :count => 20
-                when 20..39 then locale.t :half_a_minute
-                when 40..59 then locale.t :less_than_x_minutes, :count => 1
-                else             locale.t :x_minutes,           :count => 1
+              if include_seconds
+                case distance_in_seconds
+                  when 0..4   then [:less_than_x_seconds, :count => 5 ]
+                  when 5..9   then [:less_than_x_seconds, :count => 10]
+                  when 10..19 then [:less_than_x_seconds, :count => 20]
+                  when 20..39 then [:half_a_minute                    ]
+                  when 40..59 then [:less_than_x_minutes, :count => 1 ]
+                  else             [:x_minutes,           :count => 1 ]
+                end
+              else
+                distance_in_minutes == 0 ?
+                  [:less_than_x_minutes, :count => 1] :
+                  [:x_minutes, :count => distance_in_minutes]
               end
-
-            when 2..44           then locale.t :x_minutes,      :count => distance_in_minutes
-            when 45..89          then locale.t :about_x_hours,  :count => 1
-            when 90..1439        then locale.t :about_x_hours,  :count => (distance_in_minutes.to_f / 60.0).round
-            when 1440..2529      then locale.t :x_days,         :count => 1
-            when 2530..43199     then locale.t :x_days,         :count => (distance_in_minutes.to_f / 1440.0).round
-            when 43200..86399    then locale.t :about_x_months, :count => 1
-            when 86400..525599   then locale.t :x_months,       :count => (distance_in_minutes.to_f / 43200.0).round
+            when 2..44           then [:x_minutes,      :count => distance_in_minutes                       ]
+            when 45..89          then [:about_x_hours,  :count => 1                                         ]
+            when 90..1439        then [:about_x_hours,  :count => (distance_in_minutes.to_f / 60.0).round   ]
+            when 1440..2529      then [:x_days,         :count => 1                                         ]
+            when 2530..43199     then [:x_days,         :count => (distance_in_minutes.to_f / 1440.0).round ]
+            when 43200..86399    then [:about_x_months, :count => 1                                         ]
+            when 86400..525599   then [:x_months,       :count => (distance_in_minutes.to_f / 43200.0).round]
             else
               distance_in_years           = distance_in_minutes / 525600
               minute_offset_for_leap_year = (distance_in_years / 4) * 1440
               remainder                   = ((distance_in_minutes - minute_offset_for_leap_year) % 525600)
               if remainder < 131400
-                locale.t(:about_x_years,  :count => distance_in_years)
+                [:about_x_years,  :count => distance_in_years]
               elsif remainder < 394200
-                locale.t(:over_x_years,   :count => distance_in_years)
+                [:over_x_years,   :count => distance_in_years]
               else
-                locale.t(:almost_x_years, :count => distance_in_years + 1)
+                [:almost_x_years, :count => distance_in_years + 1]
               end
           end
-        end
+        I18n.translate phrase, locals.merge(:locale => options[:locale], :scope => :'datetime.distance_in_words')
       end
 
       ##

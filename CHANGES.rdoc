@@ -1,5 +1,246 @@
 = CHANGES
 
+== 0.14.2 (2018-01-02)
+- FIX router in non-Padrino applications (@adam12)
+- FIX padrino-admin haml layout
+- FIX Datamapper tasks (@adam12)
+- FIX #1979 default test or spec task
+- FIX #2150 refuse invalid database adapters
+- FIX #2152 using open without requiring 'open-uri'
+- NEW #2161 allow array as tag attribute (@aeris)
+- FIX #2163 preserve spaces in args of padrino gen
+- update Sequel usage
+- update ActiveRecord::Migration usage (@adam12)
+
+== 0.14.1 (2017-05-16)
+- FIX syntax error in ActiveRecord tasks (@sue445)
+- NEW use hamlit if available in Gemfile
+
+== 0.14.0.2 (2017-05-08)
+- FIX #2132 use Sinatra2 IndifferentHash if available
+
+== 0.14.0.1 (2017-03-23)
+- FIX #2118 allow Logger without Extensions
+- FIX #2128 do not render default layout in partials
+
+== 0.14.0 (2017-03-15)
+- NEW #2120 enable cascading with Rack application (@namusyaka)
+- FIX lock rake < 11.0 to avoid last_comment error (@namusyaka)
+- FIX handle nil database passwords for create_db and drop_db (@phallstrom)
+- FIX #2119 add rake gem tasks to gem project Rakefile
+- NEW support Erubi ERB engine (@adam12)
+- FIX #2125 do not load in cycle files excluded from reloading
+
+== 0.14.0.rc2 (2017-01-19)
+- FIX #2109 change the format of session_id for Padrino Admin AccessControl
+- WARN #2109 Existing sessions will be dropped
+- FIX #2097 Use exe folder for application executables (@adam12)
+- FIX #2105 Run bundle with --binstubs on -b switch (@adam12)
+- FIX #2111 disallow conflicting project names
+- NEW remove deprecations planned for 0.14.0
+- NEW stop managing Ruby default encodings
+  Default Encoding.default_internal is now nil (Ruby default) instead of UTF-8 (Padrino < 0.14 default)
+- FIX #2113 properly override default values in route definitions if parameter is present (@fidalgo)
+- FIX #2116 fix plugin list `padrino g plugin -l` (@fnordfish)
+
+== 0.14.0.rc1 (2016-11-02)
+- NEW remove the requirement of ActiveSupport (export AS_VERSION=X.0 to put it back)
+
+== 0.13.3.3 (2016-11-02)
+- FIX #2075 cache actual content_type mime type
+- FIX #2081 remove -i option from pg_dump command (@dfens)
+- FIX #2083 be able to create sqlite's file to deep tree of subdirectories (@kkarakawa)
+- NEW dynamically list supported renderers (@jfredrickson)
+
+== 0.13.3.2 (2016-09-06)
+- FIX #2071 regression of #1906
+- FIX running padrino without Gemfile
+- NEW alias db:create for sequel adapter
+
+== 0.13.3.1 (2016-08-30)
+- NEW support usage of partials without view path
+
+== 0.13.3 (August 17th 2016)
+
+- FIX #1785 Nested forms and helpers with ERB and Erubis (@ujifgc)
+- FIX #1847 Shoulda on modern rubies
+- NEW #1851 Remove RightJS, Riot, Steak support (@ujifgc)
+- FIX #1872 Implement using partials without Sinatra (@ujifgc)
+- NEW #1906 Allow shortened mailer render calls with default mailer and message names (@ujifgc)
+- FIX #2013 Delegate padrino and padrino-gen to bundler binstubs (@ujifgc)
+- FIX #2016 Escape urls in link_to and form_tag (@ujifgc)
+- FIX #2042 Do not override access control object when registered in multiple apps (@nxs6)
+- FIX #2045 Prevent overwriting params by given query (@namusyaka)
+- NEW #2050 Update Moneta to 0.8.0 (@basex)
+- FIX #2052 String#humanize compatibility with AS ~3.2
+- NEW #2056 Allow Pry as Padrino console shell
+- FIX #2066 fix reloader with native jruby classes
+
+== 0.13.2 (May 9th 2016)
+
+- FIX #1789 Relax Tilt version to allow Tilt 2 (>= 1.4.1, < 3) (@ujifgc)
+- WARN #1989 Warn about coming behavior change (@ujifgc)
+- NEW #1987 Generator now failes with invalid namespace (@ujifgc)
+- NEW Remove many internal uses of ActiveSupport (@ujifgc)
+- FIX #2007 Respect Regexp#names at the time of route search (@namusyaka)
+- FIX #2004 Set default alt attribute for image_tag (@namusyaka)
+- FIX #2008 Login button on the admin app now looks as expected (@namusyaka)
+- FIX #2011 Update mongoid database configuration (@serradura)
+- FIX Remove empty rows and cols from textarea tag (@ujifgc)
+- FIX #2015 Update broken links in the README and docs (@mariozig)
+- FIX #2023 Preserve `default_builder` set in configure_apps (@ujifgc)
+- FIX #2025 Match plugin names with dashes in their names (@wikimatze)
+- WARN Notice about removing ObjectSpace.classes and ObjectSpace.new_classes in 0.14 (@ujifgc)
+- FIX #2027 Use Module#name instead of Module#to_s (@namusyaka)
+- NEW Logger option :sanitize_encoding (@ujifgc)
+- FIX #2006 load missing AR models before calling seeds.rb (@ujifgc)
+- NEW #1921 Adds `--api` option for project generator (@ujifgc)
+- NEW #2032 Adds new `config/initializers` folder loaded during boot (@ujifgc)
+- FIX #2019 Removes deprecation warning for ActiveRecord (@wikimatze)
+
+== 0.13.1 (January 17th 2016)
+
+- FIX #1978 Enable reloading of custom dependencies (@markglenfletcher)
+- FIX Remove use of ActiveSupport in tests (@ujifgc)
+- FIX #1982 Support nested query for expanding path (@namusyaka)
+- FIX #1994 Missing new line in mocha generator (@peter50216)
+- FIX #1995 Invalid german dates (@ujifgc)
+- FIX #1998 Only output a warning message if the spec task is invoked (@postmodern)
+- FIX #2000 Fix mutex handling for Ruby 2.3 (@tyabe)
+
+== 0.13.1.beta1 (October 18th 2015)
+
+- FIX #1975 Improve routing memory usage and performance (@namusyaka)
+- FIX #1882 test for selected values for select tag (@ujifgc)
+- FIX rendering exception for custom mime types (@nesquena)
+- FIX relax mail gem dependency (@ujifgc)
+- FIX minor doc typos (@lokyoung, @markglenfletcher)
+
+== 0.13.0 (October 11th 2015)
+
+- FIX #1614 Do not search for caller in bundler lib (@ujifgc)
+- FIX #1796 Save and restore layout setting (@ujifgc)
+- FIX #1882 Fix ambiguous selected items in "select_tag" (@nesquena)
+- FIX #1965 Fail properly on wrong mailer name or message (@ujifgc)
+- FIX #1959 simplify the mounter class (@dnesteryuk)
+- FIX #1916 Check key existence on caching (@namusyaka)
+- NEW #1946 Documentation fixes re default renderer is now none (@Quintasan)
+- FIX #942 remove ar:auto:upgrade (@ujifgc)
+- NEW #1919 allow configuring log file path
+- FIX #1931 render partials in mail if padrino-helpers is available (@ujifgc)
+- FIX #1950 Padrino now follows Sinatra's charset policy (@ujifgc)
+- NEW #1909 Basic project configuration engine (@ujifgc)
+- NEW #1966 sample benchmark test of padrino core (@ujifgc)
+
+== 0.13.0.beta3 (August 2nd 2015)
+
+- NEW #1908 Adds test-unit as a test component (@namusyaka)
+- FIX #1829 add absolute_url to app methods, add :base_url setting (@ujifgc)
+- FIX #1880 rendering issue by accepting string content types (@ujifgc)
+- NEW #1898 Adds missing helpers for the input html element (@namusyaka)
+- FIX AWS namespace in Dynamoid component (@namusyaka)
+- FIX Root index route incorrectly matches single-character URLs (@namusyaka)
+- NEW #1929 Alias db:migrate:down and db:migrate:up when using datamapper (@postmodern)
+- FIX #1932 Replace ConnectionManagement with ConnectionPoolManagement (@namusyaka)
+- FIX Restore AbstractFormBuilder#field\_human\_name (@namusyaka)
+- FIX #1936 Don't echo password input (@namusyaka)
+- NEW #1940 Add IdentityMap middleware to datamapper (@namusyaka)
+- FIX Cache test for moneta (@ujifgc)
+- FIX #1943 Issue with format provides in controller with wildcard accepts header (@ujifgc)
+- FIX #1942 maintain Sinatra params indifference (@ujifgc)
+- FIX properly reload classes without instances (@ujifgc)
+- FIX #1922 consider methodless constants not external (@ujifgc)
+- NEW #1945 adds community page to padrino-docs (@Quintasan)
+
+== 0.13.0.beta2 (April 11th 2015)
+
+* FIX #1870 Trigger filters if superclass responds to :filters (@namusyaka)
+* FIX #749 Trigger resource dirtiness for datamapper (@ujifgc)
+* NEW #1853 Adds wrapper for application which allows better extensibility (@namusyaka)
+* FIX #1891 Refactorings for more reliable dependency loading (@hcatlin, @namusyaka)
+* FIX Update rack-test to 0.6.3 and remove old patch (@ujifgc)
+* FIX #1895 Use compass-blueprint gem for improved compass generator (@myokoym)
+* FIX #1899 Upgrade to sinatra 1.4.6 and latest rack version (@namusyaka)
+* FIX #1886 Moves rake task loading code later in the booting process (@namusyaka)
+
+== 0.13.0.beta1 (February 22nd 2015)
+
+* FIX cleanup and refactor rake tasks (@ujifgc)
+* NEW Remove deprecated cache functionality (@minad)
+* FIX Cleanup and improve test helpers for each gem (@ujifgc)
+* FIX allow Padrino::Rendering with standard ERB (@ujifgc)
+* NEW Emulate set method in mailer context (@ujifgc)
+* FIX #1772 add button content tag to button_to block (@ujifgc)
+* NEW #1133 switch default renderer to none (@ujifgc)
+* FIX #1792 Faster code using reverse_each to iterate gems (@glaucocustodio)
+* FIX #1793 Faster code using #sub instead of #gsub (@glaucocustodio)
+* FIX #1795 load missing models for sq:seed (@ujifgc)
+* NEW Use mustermann19 in all cases now (@namusyaka)
+* FIX Remove abuse of force_encoding (@ujifgc)
+* FIX #1811 Refactor and change style of path_router within core routing (@namusyaka)
+* FIX #1803 Use relative paths for sqlite and sequel (@ujifgc)
+* NEW #1800 Support named capture on regex for router (@namusyaka)
+* FIX #1821 Don't load dependency files unless app's root is within Padrino root (@namusyaka)
+* FIX Improved docs and FAQ for helpers and core (@fwolfst, @CrowdHailer, @seanhussey, @neilang)
+* FIX #1835 Switch admin to sequel fixtures rather than datamapper (@namusyaka)
+* FIX #1828 Refactor new router and fix sinatra compatibility (@namusyaka)
+* FIX Ensure the before_filter is triggered in certain cases (@namusyaka)
+* FIX Widen the range of `default_dependency_paths` (@namusyaka)
+* NEW #1831 Implement the `mi:translate` task (@namusyaka)
+* FIX #1852 ApplicationWrapper Prerequisite Issue (@hcatlin)
+* FIX #1856 Skips loading models for the activerecord rake tasks (@namusyaka)
+* NEW #1857 Precompile routes when loading Padrino (@namusyaka)
+* NEW #1818 Implement `source_location` option for logger (@namusyaka)
+* FIX #1859 Correct issues with the admin seeds generator (@Quintasan)
+* FIX #1704 Make broken async stream callbacks work in Padrino (@jay2u)
+* FIX #1862 Re-implement `PathRouter#recognize` (@namusyaka)
+* FIX #863 Removes unsafe http_router patch (@namusyaka)
+* FIX #1867 Update ShowExceptions to suit latest rack master (@namusyaka)
+* FIX #1879 Improve access to Active Record Database Configuration (@scudelletti)
+* DELETE remove deprecations (String#undent, #link_to with :fragment, old caching,
+  old form builder, rendering #fetch_template_file, #cache_template_file!, #resolved_layout,
+  Application#load_paths, Padrino.set_load_paths, Padrino.load_paths)
+* FIX #1860 Padrino --environment switch now takes precedence over RACK_ENV environment variable
+* FIX #1849 return proper exit codes in CLI
+
+== 0.12.5 (February 22nd 2015)
+
+* FIX #1794 inheritance of global prereqs (@ujifgc)
+* FIX #1798 handling non-array `with` statement for params (@ujifgc)
+* FIX Russian translation for password (@harrykiselev)
+* FIX Prevent Padrino from overriding cache settings (@dariocravero)
+* FIX sequence of execution for configuration methods in application (@namusyaka)
+* FIX translations for admin for cs (@ortiga)
+* FIX exception raised when running the controller generator (@namusyaka)
+* FIX #1875 lock down rack to < 1.6.0 because of sinatra conflict (@ujifgc)
+
+== 0.12.4 (October 19th 2014)
+
+* FIX #1744 Corrects color support for Windows (@tyabe)
+* FIX #1736 Regression with textarea helper (@ujifgc)
+* FIX #1743 Add a padrino-gen generator for creating new Helpers (@dariocravero)
+* FIX #1746 Avoid reloading the file if its path is not started with Padrino.root (@namusyaka)
+* DELETE deprecated build_object method (@namusyaka)
+* FIX #1752 Don't set the @_use_format variable when provides method is called (@namusyaka)
+* FIX #48 Update mailer documentation and sample code (@postmodern)
+* FIX #1752 Refactor routing code to avoid weird parameter (@namusyaka)
+* FIX #1754 Adds end tags to admin erb template for index (@namusyaka)
+* FIX #1749 Replace the AR::ConnectionManagement middleware with new middleware (@namusyaka)
+* NEW #1756 Adds support for mysql2 gem in sql rake task helpers (@d6rkaiz)
+* FIX #1761 Allow passing upcased string as the app name
+* FIX #1776 improve params filtering for routes (@ujifgc)
+* FIX #1778 Various YARD doc inconsistencies or errors (@claudiob)
+* FIX #1765 Use controller's base path instead of constant name at controller test (@namusyaka)
+* FIX #1781 Removes the default_filters method setting incorrect content-type (@namusyaka)
+* FIX Sinatra compatibility for passing options to the static! method
+* FIX #1585 Update HAML to pass tests by upgrading versions (@ujifgc)
+* FIX #1782 make padrino-gen detect absolute paths on Windows (@ujifgc)
+* FIX #1779 Use expanded path to request controller's content (@namusyaka)
+* FIX Use yield and flatmap when possible to speed up performance (@ujifgc)
+* NEW #1787 Mounter now supports Rack applications (@namusyaka)
+* FIX #1788 exception that occurs when the free regex route exists (@namusyaka)
+* NEW Merges the padrino-docs guides and content directly into the main repository (@ujifgc)
+
 == 0.12.3 (August 13th 2014)
 
 * FIX #1579 Update admin deps such as font-awesome, jquery, bootstrap (@WaYdotNET)

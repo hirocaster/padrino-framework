@@ -1,5 +1,11 @@
-# coding:utf-8
-RAKE_ROOT = __FILE__
-
-require 'rubygems'
 require File.expand_path(File.dirname(__FILE__) + '/../gem_rake_helper')
+
+Rake::TestTask.new(:bench) do |test|
+  test.libs << 'test'
+  test.test_files = Dir['test/**/bench_*.rb']
+end
+
+Rake::TestTask.new(:mem) do |test|
+  test.libs << 'test'
+  test.test_files = Dir['test/**/mem_*.rb']
+end

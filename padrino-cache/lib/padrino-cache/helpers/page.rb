@@ -63,11 +63,6 @@ module Padrino
           @route.cache_expires = time
         end
 
-        def expires_in(time)
-          warn 'expires_in has been deprecated in favour of expires'
-          expires(time)
-        end
-
         ##
         # This helper is used within a route or route to indicate the name in the cache.
         #
@@ -135,7 +130,7 @@ module Padrino
 
           content = {
             :body         => @_response_buffer,
-            :content_type => @_content_type
+            :content_type => response.content_type
           }
 
           settings.cache.store(route_cache_key, content, :expires => cache_expires)

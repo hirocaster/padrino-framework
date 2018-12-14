@@ -25,7 +25,7 @@
               <%%= tag_icon :magic %> <span class=caret></span>
             </a>
             <ul class="list-menu dropdown-menu" role=menu>
-              <li class=ist-menu-wrapper>
+              <li class=list-menu-wrapper>
                 <%%= link_to tag_icon('check-square-o', pat(:select_all)), '#', :id => 'select-all', :class => 'list-menu-link' %>
               </li>
               <li class=list-menu-wrapper.list-menu-wrapper-disabled>
@@ -53,6 +53,7 @@
         <th class=header> <%%= mat(:<%= @orm.name_singular %>, :<%= column.name %>) %></th>
         <% end -%>
         <th class="header list-row-action-header"></th>
+      </tr>
     </thead>
 
     <tbody>
@@ -78,13 +79,15 @@
                  <div class=arrow> </div>
                  <h3 class=popover-title><%%= pat(:delete, :model => "<%= @orm.name_singular %>") %></h3>
                  <div class=popover-content>
-                   <%%- form_tag url(:<%= @orm.name_plural %>, :destroy, :id => <%= @orm.name_singular %>.id), :method => :delete do %>
+                   <%% form_tag url(:<%= @orm.name_plural %>, :destroy, :id => <%= @orm.name_singular %>.id), :method => :delete do %>
                      <%%= submit_tag pat(:delete), :class =>'list-row-action-popover-delete-one-btn btn btn-danger btn-small' %>
                      <div class="btn btn-default btn-small cancel"><%%= pat(:cancel) %></div>
                    <%% end %>
+                 </div>
                </div>
              </div>
           </td>
+        </tr>
       <%% end %>
     </tbody>
   </table>

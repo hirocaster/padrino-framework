@@ -1,8 +1,12 @@
+require 'mail'
+
 module Mail # @private
   class Message # @private
     include Sinatra::Templates
     include Padrino::Rendering if defined?(Padrino::Rendering)
+    include Padrino::Helpers::RenderHelpers if defined? Padrino::Helpers::RenderHelpers
     attr_reader :template_cache
+    attr_accessor :mailer_name, :message_name
 
     def initialize_with_app(*args, &block)
       @template_cache = Tilt::Cache.new
@@ -20,7 +24,8 @@ module Mail # @private
 
       initialize_without_app(*args, &block)
     end
-    alias_method_chain :initialize, :app
+    alias_method :initialize_without_app, :initialize
+    alias_method :initialize, :initialize_with_app
 
     ##
     # Setup like in Sinatra/Padrino apps content_type and template lookup.
@@ -82,7 +87,7 @@ module Mail # @private
         instance_variable_set "@#{variable}", self.part(:content_type => content_type,
                                                         :body => value,
                                                         :part_block => block)
-        add_multipart_alternate_header unless self.send(variable).blank?
+        add_multipart_alternate_header if self.send(variable)
       else
         instance_variable_get("@#{variable}") || find_first_mime_type(content_type)
       end
@@ -112,16 +117,26 @@ module Mail # @private
 
     def do_delivery_with_logging
       logger.debug "Sending email to: #{destinations.join(" ")}"
-      encoded.to_lf.split("\n").each { |line| logger << ("  " + line) } if logger.debug?
+      encoded.each_line { |line| logger << ("  " + line.strip) } if logger.debug?
       do_delivery_without_logging
     end
-    alias_method_chain :do_delivery, :logging if Padrino.respond_to?(:logger)
+    if Padrino.respond_to?(:logger)
+      alias_method :do_delivery_without_logging, :do_delivery
+      alias_method :do_delivery, :do_delivery_with_logging
+    end
 
     ##
     # Sinatra and Padrino compatibility.
     #
     def settings
       self.class
+    end
+
+    ##
+    # Sinatra almost compatibility.
+    #
+    def self.set(name, value)
+      self.class.instance_eval{ define_method(name) { value } unless method_defined?(:erb) }
     end
 
     ##
@@ -231,26 +246,40 @@ module Mail # @private
       mime = content_type_without_symbol(value)
       Padrino::Mailer::Mime.mime_type(mime)
     end
-    alias_method_chain :content_type, :symbol
+    alias_method :content_type_without_symbol, :content_type
+    alias_method :content_type, :content_type_with_symbol
 
     private
 
     ##
     # Defines the render for the mailer utilizing the padrino 'rendering' module
     #
-    def render(engine, data=nil, options={}, locals={}, &block)
-      locals = @_locals if options[:locals].blank? && locals.blank?
+    def render(engine=nil, data=nil, options={}, locals={}, &block)
+      locals = @_locals || {} if !options[:locals] && locals.empty?
       @template_cache.clear if settings.reload_templates?
+
+      engine ||= message_name
+
+      if mailer_name && !engine.to_s.index('/')
+        settings.views += "/#{mailer_name}" 
+        engine = engine.to_s.sub(%r{^#{mailer_name}/}, '')
+      end
 
       provides.each do |format|
         part do |p|
           p.content_type(format)
           p.send(:render, engine, data, options, locals, &block)
-          add_multipart_alternate_header if html_part.present? || provides.include?(:html)
+          add_multipart_alternate_header if html_part || provides.include?(:html)
         end
       end
 
       self.body = super(engine, data, options, locals, &block) if provides.empty?
+    end
+
+    alias_method :original_partial, :partial if instance_methods.include?(:partial)
+    def partial(template, options={}, &block)
+      raise "gem 'padrino-helpers' is required to render partials" unless respond_to?(:original_partial)
+      self.body = original_partial(template, options, &block)
     end
 
     ##

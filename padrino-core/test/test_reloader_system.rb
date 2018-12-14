@@ -2,6 +2,7 @@ require File.expand_path(File.dirname(__FILE__) + '/helper')
 require File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/kiq')
 require File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/system')
 require File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/static')
+require File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/custom_dependencies/custom_dependencies')
 
 describe "SystemReloader" do
   describe 'for wierd and difficult reload events' do
@@ -43,16 +44,6 @@ describe "SystemReloader" do
         assert_equal 'Shmancy', Child.new.shmamily
       ensure
         File.open(parent_file, "w") { |f| f.write(backup) }
-      end
-    end
-
-    it 'should tamper with LOAD_PATH' do
-    skip
-      SystemDemo.load_paths.each do |lib_dir|
-        assert_includes $LOAD_PATH, lib_dir
-      end
-      Padrino.send(:default_load_paths).each do |lib_dir|
-        assert_includes $LOAD_PATH, lib_dir
       end
     end
 
@@ -118,6 +109,51 @@ describe "SystemReloader" do
       ensure
         FileUtils.rm tmp_file
       end
+    end
+
+    it 'should not fail with superclass mismatch when reloading descendant classes with no instances' do
+      Padrino.clear!
+      require File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/stealthy/app.rb')
+      @app = SystemStealthyClassDemo
+      Padrino.mount(SystemStealthyClassDemo).to("/")
+      get '/'
+      FileUtils.touch File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/stealthy/helpers/stealthy_class_helpers.rb')
+      Padrino.reload!
+    end
+  end
+
+  describe 'reloading custom dependencies' do
+    let(:custom_dependency_path) { File.dirname(__FILE__) + '/fixtures/apps/custom_dependencies/my_dependencies' }
+    let(:custom_dependency) { File.join(custom_dependency_path, 'my_dependency.rb') }
+
+    before do
+      @app = CustomDependencies
+      Padrino.clear!
+      Padrino.mount(CustomDependencies).to("/")
+      Padrino.dependency_paths << custom_dependency_path + '/*.rb'
+      Padrino.load!
+      get '/'
+    end
+
+    it 'should discover changed dependencies' do
+      FileUtils.touch(custom_dependency)
+      assert Padrino::Reloader.changed?, 'Change to custom dependency has not been recognised'
+    end
+  end
+
+  describe 'reloading module constants' do
+    it 'should remove constants of misdesigned modules' do
+      skip
+      Padrino.clear!
+      require File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/concerned/app.rb')
+      @app = SystemConcernedClassDemo
+      Padrino.mount(SystemConcernedClassDemo).to("/")
+      get '/'
+
+      original_value = BadModule.instance_variable_get(:@happy_global_variable)
+      FileUtils.touch File.dirname(__FILE__) + '/fixtures/apps/concerned/models/mixins/badmodule.rb'
+      Padrino.reload!
+      assert_equal original_value, BadModule.instance_variable_get(:@happy_global_variable)
     end
   end
 end

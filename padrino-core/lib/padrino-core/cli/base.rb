@@ -4,7 +4,7 @@ module Padrino
   module Cli
     class Base < Launcher
       desc "rake", "Execute rake tasks."
-      method_option :environment, :type => :string,  :aliases => "-e", :required => true, :default => :development
+      method_option :environment, :type => :string,  :aliases => "-e"
       method_option :list,        :type => :string,  :aliases => "-T", :desc => "Display the tasks (matching optional PATTERN) with descriptions, then exit."
       method_option :trace,       :type => :boolean, :aliases => "-t", :desc => "Turn on invoke/execute tracing, enable full backtrace."
       def rake(*args)
@@ -28,16 +28,20 @@ module Padrino
       def console(*args)
         prepare :console
         require File.expand_path("../../version", __FILE__)
-        ARGV.clear
-        require 'irb'
-        begin
-          require "irb/completion"
-        rescue LoadError
-        end
         require File.expand_path('config/boot.rb')
         puts "=> Loading #{Padrino.env} console (Padrino v.#{Padrino.version})"
         require File.expand_path('../console', __FILE__)
-        IRB.start
+        ARGV.clear
+        if defined? Pry
+          Pry.start
+        else
+          require 'irb'
+          begin
+            require "irb/completion"
+          rescue LoadError
+          end
+          IRB.start
+        end
       end
 
       desc "generate", "Executes the Padrino generator with given options (alternatively use 'gen' or 'g')."

@@ -14,13 +14,13 @@ describe "ProjectGenerator" do
   describe 'the project generator' do
     it 'should allow simple generator to run and create base_app with no options' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}") }
-      assert_file_exists("#{@apptmp}/sample_project")
+      assert_dir_exists("#{@apptmp}/sample_project")
       assert_match_in_file(/module SampleProject/,"#{@apptmp}/sample_project/app/app.rb")
       assert_match_in_file(/class App < Padrino::Application/,"#{@apptmp}/sample_project/app/app.rb")
       assert_match_in_file("Padrino.mount('SampleProject::App', :app_file => Padrino.root('app/app.rb')).to('/')", "#{@apptmp}/sample_project/config/apps.rb")
       assert_file_exists("#{@apptmp}/sample_project/config/boot.rb")
       assert_file_exists("#{@apptmp}/sample_project/Rakefile")
-      assert_file_exists("#{@apptmp}/sample_project/bin/sample_project")
+      assert_file_exists("#{@apptmp}/sample_project/exe/sample_project")
       assert_file_exists("#{@apptmp}/sample_project/public/favicon.ico")
       assert_dir_exists("#{@apptmp}/sample_project/public/images")
       assert_dir_exists("#{@apptmp}/sample_project/public/javascripts")
@@ -31,12 +31,12 @@ describe "ProjectGenerator" do
 
     it 'should generate a valid name' do
       capture_io { generate(:project, 'project.com', "--root=#{@apptmp}") }
-      assert_file_exists("#{@apptmp}/project.com")
+      assert_dir_exists("#{@apptmp}/project.com")
       assert_match_in_file(/module ProjectCom/,  "#{@apptmp}/project.com/app/app.rb")
       assert_match_in_file(/class App < Padrino::Application/,  "#{@apptmp}/project.com/app/app.rb")
       assert_match_in_file("Padrino.mount('ProjectCom::App', :app_file => Padrino.root('app/app.rb')).to('/')", "#{@apptmp}/project.com/config/apps.rb")
       capture_io { generate(:app, 'ws-dci-2011', "--root=#{@apptmp}/project.com") }
-      assert_file_exists("#{@apptmp}/project.com/ws_dci_2011")
+      assert_dir_exists("#{@apptmp}/project.com/ws_dci_2011")
       assert_match_in_file(/module ProjectCom/,  "#{@apptmp}/project.com/ws_dci_2011/app.rb")
       assert_match_in_file(/class WsDci2011 < Padrino::Application/,  "#{@apptmp}/project.com/ws_dci_2011/app.rb")
       assert_match_in_file("Padrino.mount('ProjectCom::WsDci2011', :app_file => Padrino.root('ws_dci_2011/app.rb')).to('/ws_dci_2011')", "#{@apptmp}/project.com/config/apps.rb")
@@ -44,12 +44,12 @@ describe "ProjectGenerator" do
 
     it 'should generate nested path with dashes in name' do
       capture_io { generate(:project, 'sample-project', "--root=#{@apptmp}") }
-      assert_file_exists("#{@apptmp}/sample-project")
+      assert_dir_exists("#{@apptmp}/sample-project")
       assert_match_in_file(/module SampleProject/,  "#{@apptmp}/sample-project/app/app.rb")
       assert_match_in_file(/class App < Padrino::Application/,  "#{@apptmp}/sample-project/app/app.rb")
       assert_match_in_file("Padrino.mount('SampleProject::App', :app_file => Padrino.root('app/app.rb')).to('/')", "#{@apptmp}/sample-project/config/apps.rb")
       capture_io { generate(:app, 'ws-dci-2011', "--root=#{@apptmp}/sample-project") }
-      assert_file_exists("#{@apptmp}/sample-project/ws_dci_2011")
+      assert_dir_exists("#{@apptmp}/sample-project/ws_dci_2011")
       assert_match_in_file(/module SampleProject/,  "#{@apptmp}/sample-project/ws_dci_2011/app.rb")
       assert_match_in_file(/class WsDci2011 < Padrino::Application/,  "#{@apptmp}/sample-project/ws_dci_2011/app.rb")
       assert_match_in_file("Padrino.mount('SampleProject::WsDci2011', :app_file => Padrino.root('ws_dci_2011/app.rb')).to('/ws_dci_2011')", "#{@apptmp}/sample-project/config/apps.rb")
@@ -62,13 +62,13 @@ describe "ProjectGenerator" do
 
     it 'should display the right path' do
       out, err = capture_io { generate(:project, 'project', "--root=/tmp") }
-      assert_file_exists("/tmp/project")
+      assert_dir_exists("/tmp/project")
       assert_match(/cd \/tmp\/project/, out)
     end
 
     it 'should allow specifying alternate application name' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--app=base_app') }
-      assert_file_exists("#{@apptmp}/sample_project")
+      assert_dir_exists("#{@apptmp}/sample_project")
       assert_match_in_file(/module SampleProject/,"#{@apptmp}/sample_project/app/app.rb")
       assert_match_in_file(/class BaseApp < Padrino::Application/,"#{@apptmp}/sample_project/app/app.rb")
       assert_match_in_file("Padrino.mount('SampleProject::BaseApp', :app_file => Padrino.root('app/app.rb')).to('/')", "#{@apptmp}/sample_project/config/apps.rb")
@@ -101,8 +101,8 @@ describe "ProjectGenerator" do
 
     it 'should generate tiny skeleton' do
       capture_io { generate(:project,'sample_project', '--tiny', "--root=#{@apptmp}") }
-      assert_file_exists("#{@apptmp}/sample_project")
-      assert_file_exists("#{@apptmp}/sample_project/app")
+      assert_dir_exists("#{@apptmp}/sample_project")
+      assert_dir_exists("#{@apptmp}/sample_project/app")
       assert_file_exists("#{@apptmp}/sample_project/app/controllers.rb")
       assert_file_exists("#{@apptmp}/sample_project/app/helpers.rb")
       assert_file_exists("#{@apptmp}/sample_project/app/mailers.rb")
@@ -172,15 +172,15 @@ describe "ProjectGenerator" do
       assert_equal 'none', components_chosen[:test]
       assert_equal 'none', components_chosen[:mock]
       assert_equal 'none', components_chosen[:script]
-      assert_equal 'slim', components_chosen[:renderer]
+      assert_equal 'none', components_chosen[:renderer]
     end
 
     it 'should create components file containing options chosen' do
-      component_options = ['--orm=datamapper', '--test=riot', '--mock=mocha', '--script=prototype', '--renderer=erb', '--stylesheet=less']
+      component_options = ['--orm=datamapper', '--test=rspec', '--mock=mocha', '--script=prototype', '--renderer=erb', '--stylesheet=less']
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", *component_options) }
       components_chosen = YAML.load_file("#{@apptmp}/sample_project/.components")
       assert_equal 'datamapper', components_chosen[:orm]
-      assert_equal 'riot',       components_chosen[:test]
+      assert_equal 'rspec',      components_chosen[:test]
       assert_equal 'mocha',      components_chosen[:mock]
       assert_equal 'prototype',  components_chosen[:script]
       assert_equal 'erb',        components_chosen[:renderer]
@@ -188,10 +188,10 @@ describe "ProjectGenerator" do
     end
 
     it 'should output to log components being applied' do
-      component_options = ['--orm=datamapper', '--test=riot', '--mock=mocha', '--script=prototype', '--renderer=erb','--stylesheet=less']
+      component_options = ['--orm=datamapper', '--test=rspec', '--mock=mocha', '--script=prototype', '--renderer=erb','--stylesheet=less']
       out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", *component_options) }
       assert_match(/applying.*?datamapper.*?orm/, out)
-      assert_match(/applying.*?riot.*?test/, out)
+      assert_match(/applying.*?rspec.*?test/, out)
       assert_match(/applying.*?mocha.*?mock/, out)
       assert_match(/applying.*?prototype.*?script/, out)
       assert_match(/applying.*?erb.*?renderer/, out)
@@ -208,16 +208,15 @@ describe "ProjectGenerator" do
       assert_file_exists("#{@apptmp}/sample_project/tmp/.keep")
       assert_file_exists("#{@apptmp}/sample_project/log/.keep")
     end
+
+    it 'should allow to pass upcased name as the app name' do
+      capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", "--app=API") }
+      assert_file_exists("#{@apptmp}/sample_project/app/app.rb")
+      assert_match_in_file(/class API < Padrino::Application/, "#{@apptmp}/sample_project/app/app.rb")
+    end
   end
 
   describe "a generator for mock component" do
-    it 'should properly generate for rr and riot' do
-      out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--mock=rr', '--test=riot', '--script=none') }
-      assert_match(/applying.*?rr.*?mock/, out)
-      assert_match_in_file(/gem 'rr'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/require 'riot\/rr'/, "#{@apptmp}/sample_project/test/test_config.rb")
-    end
-
     it 'should properly generate for rr and minitest' do
       out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--mock=rr', '--test=minitest', '--script=none') }
       assert_match(/applying.*?rr.*?mock/, out)
@@ -244,13 +243,6 @@ describe "ProjectGenerator" do
       assert_match(/applying.*?mocha.*?mock/, out)
       assert_match_in_file(/gem 'mocha'/, "#{@apptmp}/sample_project/Gemfile")
       assert_match_in_file(/conf.mock_with :mocha/m, "#{@apptmp}/sample_project/spec/spec_helper.rb")
-    end
-
-    it 'should properly generate for mocha and riot' do
-      out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--test=riot', '--mock=mocha', '--script=none') }
-      assert_match(/applying.*?mocha.*?mock/, out)
-      assert_match_in_file(/gem 'mocha'.*require => false/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/require 'mocha\/api'/, "#{@apptmp}/sample_project/test/test_config.rb")
     end
   end
 
@@ -336,7 +328,7 @@ describe "ProjectGenerator" do
       end
 
       it 'should properly generate sqlite3' do
-        out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--orm=activerecord', '--adapter=sqlite3') }
+        out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--orm=activerecord', '--adapter=sqlite') }
         assert_match_in_file(/gem 'sqlite3'/, "#{@apptmp}/sample_project/Gemfile")
         assert_match_in_file(/sample_project_development.db/, "#{@apptmp}/sample_project/config/database.rb")
         assert_match_in_file(%r{:adapter => 'sqlite3'}, "#{@apptmp}/sample_project/config/database.rb")
@@ -401,7 +393,7 @@ describe "ProjectGenerator" do
     it 'should properly generate for mongoid' do
       out, err = capture_io { generate(:project, 'project.com', "--root=#{@apptmp}", '--orm=mongoid', '--script=none') }
       assert_match(/applying.*?mongoid.*?orm/, out)
-      assert_match_in_file(/gem 'mongoid', '~>3.0.0'/, "#{@apptmp}/project.com/Gemfile")
+      assert_match_in_file(/gem 'mongoid'/, "#{@apptmp}/project.com/Gemfile")
       assert_match_in_file(/Mongoid::Config.sessions =/, "#{@apptmp}/project.com/config/database.rb")
     end
 
@@ -452,7 +444,7 @@ describe "ProjectGenerator" do
     it 'should properly generate for erb' do
       out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--renderer=erb', '--script=none') }
       assert_match(/applying.*?erb.*?renderer/, out)
-      assert_match_in_file(/gem 'erubis'/, "#{@apptmp}/sample_project/Gemfile")
+      assert_match_in_file(/gem 'erubi'/, "#{@apptmp}/sample_project/Gemfile")
     end
 
     it 'should properly generate for haml' do
@@ -500,14 +492,6 @@ describe "ProjectGenerator" do
       assert_file_exists("#{@apptmp}/sample_project/public/javascripts/application.js")
     end
 
-    it 'should properly generate for rightjs' do
-      out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=rightjs') }
-      assert_match(/applying.*?rightjs.*?script/, out)
-      assert_file_exists("#{@apptmp}/sample_project/public/javascripts/right.js")
-      assert_file_exists("#{@apptmp}/sample_project/public/javascripts/right-ujs.js")
-      assert_file_exists("#{@apptmp}/sample_project/public/javascripts/application.js")
-    end
-
     it 'should properly generate for ext-core' do
       out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--script=extcore') }
       assert_match(/applying.*?extcore.*?script/, out)
@@ -540,23 +524,6 @@ describe "ProjectGenerator" do
       assert_match_in_file(/task 'test' => test_tasks/,"#{@apptmp}/sample_project/test/test.rake")
     end
 
-    it 'should properly generate for riot' do
-      out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--test=riot', '--script=none') }
-      assert_match(/applying.*?riot.*?test/, out)
-      assert_match_in_file(/gem 'rack-test'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/:require => 'rack\/test'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/:group => 'test'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/gem 'riot'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/include Rack::Test::Methods/, "#{@apptmp}/sample_project/test/test_config.rb")
-      assert_match_in_file(/RACK_ENV = 'test' unless defined\?\(RACK_ENV\)/, "#{@apptmp}/sample_project/test/test_config.rb")
-      assert_match_in_file(/Riot::Situation/, "#{@apptmp}/sample_project/test/test_config.rb")
-      assert_match_in_file(/Riot::Context/, "#{@apptmp}/sample_project/test/test_config.rb")
-      assert_match_in_file(/SampleProject::App\.tap/, "#{@apptmp}/sample_project/test/test_config.rb")
-      assert_file_exists("#{@apptmp}/sample_project/test/test.rake")
-      assert_match_in_file(/Rake::TestTask\.new\("test:\#/,"#{@apptmp}/sample_project/test/test.rake")
-      assert_match_in_file(/task 'test' => test_tasks/,"#{@apptmp}/sample_project/test/test.rake")
-    end
-
     it 'should properly generate for rspec' do
       out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--test=rspec', '--script=none') }
       assert_match(/applying.*?rspec.*?test/, out)
@@ -583,20 +550,6 @@ describe "ProjectGenerator" do
       assert_file_exists("#{@apptmp}/sample_project/test/test.rake")
       assert_match_in_file(/Rake::TestTask\.new\("test:\#/,"#{@apptmp}/sample_project/test/test.rake")
       assert_match_in_file(/task 'test' => test_tasks/,"#{@apptmp}/sample_project/test/test.rake")
-    end
-
-    it 'should properly generate for steak' do
-      out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--test=steak', '--script=none') }
-      assert_match(/applying.*?steak.*?test/, out)
-      assert_match_in_file(/gem 'rack-test'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/:require => 'rack\/test'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/:group => 'test'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/gem 'steak'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/RACK_ENV = 'test' unless defined\?\(RACK_ENV\)/, "#{@apptmp}/sample_project/spec/spec_helper.rb")
-      assert_match_in_file(/RSpec.configure/, "#{@apptmp}/sample_project/spec/spec_helper.rb")
-      assert_file_exists("#{@apptmp}/sample_project/spec/spec.rake")
-      assert_match_in_file(/RSpec::Core::RakeTask\.new\("spec:\#/,"#{@apptmp}/sample_project/spec/spec.rake")
-      assert_match_in_file(/task 'spec' => spec_tasks/,"#{@apptmp}/sample_project/spec/spec.rake")
     end
 
     it 'should properly generate for minitest' do
@@ -642,7 +595,7 @@ describe "ProjectGenerator" do
     it 'should properly generate for sass' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--renderer=haml','--script=none','--stylesheet=sass') }
       assert_match_in_file(/gem 'sass'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/module SassInitializer.*Sass::Plugin::Rack/m, "#{@apptmp}/sample_project/lib/sass_initializer.rb")
+      assert_match_in_file(/module SassInitializer.*Sass::Plugin::Rack/m, "#{@apptmp}/sample_project/config/initializers/sass.rb")
       assert_match_in_file(/register SassInitializer/m, "#{@apptmp}/sample_project/app/app.rb")
       assert_dir_exists("#{@apptmp}/sample_project/app/stylesheets")
     end
@@ -650,16 +603,16 @@ describe "ProjectGenerator" do
     it 'should properly generate for less' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--renderer=haml','--script=none','--stylesheet=less') }
       assert_match_in_file(/gem 'rack-less'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/module LessInitializer.*Rack::Less/m, "#{@apptmp}/sample_project/lib/less_initializer.rb")
+      assert_match_in_file(/module LessInitializer.*Rack::Less/m, "#{@apptmp}/sample_project/config/initializers/less.rb")
       assert_match_in_file(/register LessInitializer/m, "#{@apptmp}/sample_project/app/app.rb")
       assert_dir_exists("#{@apptmp}/sample_project/app/stylesheets")
     end
 
     it 'should properly generate for compass' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--renderer=haml','--script=none','--stylesheet=compass') }
-      assert_match_in_file(/gem 'compass'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/Compass.configure_sass_plugin\!/, "#{@apptmp}/sample_project/lib/compass_plugin.rb")
-      assert_match_in_file(/module CompassInitializer.*Sass::Plugin::Rack/m, "#{@apptmp}/sample_project/lib/compass_plugin.rb")
+      assert_match_in_file(/gem 'compass-blueprint'/, "#{@apptmp}/sample_project/Gemfile")
+      assert_match_in_file(/Compass.configure_sass_plugin\!/, "#{@apptmp}/sample_project/config/initializers/compass.rb")
+      assert_match_in_file(/module CompassInitializer.*Sass::Plugin::Rack/m, "#{@apptmp}/sample_project/config/initializers/compass.rb")
       assert_match_in_file(/register CompassInitializer/m, "#{@apptmp}/sample_project/app/app.rb")
 
       assert_file_exists("#{@apptmp}/sample_project/app/stylesheets/application.scss")
@@ -669,8 +622,8 @@ describe "ProjectGenerator" do
     it 'should properly generate for scss' do
       capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--renderer=haml','--script=none','--stylesheet=scss') }
       assert_match_in_file(/gem 'haml'/, "#{@apptmp}/sample_project/Gemfile")
-      assert_match_in_file(/module ScssInitializer.*Sass::Plugin::Rack/m, "#{@apptmp}/sample_project/lib/scss_initializer.rb")
-      assert_match_in_file(/Sass::Plugin.options\[:syntax\] = :scss/m, "#{@apptmp}/sample_project/lib/scss_initializer.rb")
+      assert_match_in_file(/module ScssInitializer.*Sass::Plugin::Rack/m, "#{@apptmp}/sample_project/config/initializers/scss.rb")
+      assert_match_in_file(/Sass::Plugin.options\[:syntax\] = :scss/m, "#{@apptmp}/sample_project/config/initializers/scss.rb")
       assert_match_in_file(/register ScssInitializer/m, "#{@apptmp}/sample_project/app/app.rb")
       assert_dir_exists("#{@apptmp}/sample_project/app/stylesheets")
     end
@@ -684,17 +637,8 @@ describe "ProjectGenerator" do
       assert_file_exists("#{@apptmp}/sample_project/spec/app/helpers/helpers_spec.rb")
       assert_match_in_file(/Dir\[File\.expand_path\(File\.dirname\(__FILE__\) \+ "\/\.\.\/app\/helpers\.rb"\)\]\.each\(&method\(:require\)\)/, "#{@apptmp}/sample_project/spec/spec_helper.rb")
       assert_match_in_file(/RSpec\.describe "Controller" do/, "#{@apptmp}/sample_project/spec/app/controllers/controllers_spec.rb")
+      assert_match_in_file(/get "\/"/, "#{@apptmp}/sample_project/spec/app/controllers/controllers_spec.rb")
       assert_match_in_file(/RSpec.describe "SampleProject::App::Helper" do/, "#{@apptmp}/sample_project/spec/app/helpers/helpers_spec.rb")
-    end
-
-    it "should properly generate for steak" do
-      capture_io { generate(:project,'sample_project', '--tiny', "--root=#{@apptmp}", "--test=steak") }
-      assert_dir_exists("#{@apptmp}/sample_project/spec/")
-      assert_file_exists("#{@apptmp}/sample_project/spec/app/controllers/controllers_spec.rb")
-      assert_file_exists("#{@apptmp}/sample_project/spec/app/helpers/helpers_spec.rb")
-      assert_match_in_file(/Dir\[File\.expand_path\(File\.dirname\(__FILE__\) \+ "\/\.\.\/app\/helpers\.rb"\)\]\.each\(&method\(:require\)\)/, "#{@apptmp}/sample_project/spec/spec_helper.rb")
-      assert_match_in_file(/describe "Controller" do/, "#{@apptmp}/sample_project/spec/app/controllers/controllers_spec.rb")
-      assert_match_in_file(/describe "SampleProject::App::Helper" do/, "#{@apptmp}/sample_project/spec/app/helpers/helpers_spec.rb")
     end
 
     it "should properly generate for cucumber" do
@@ -727,16 +671,6 @@ describe "ProjectGenerator" do
       assert_match_in_file(/describe "SampleProject::App::Helper"/, "#{@apptmp}/sample_project/test/app/helpers/helpers_test.rb")
     end
 
-    it "should properly generate for riot" do
-      capture_io { generate(:project,'sample_project', '--tiny', "--root=#{@apptmp}", "--test=riot") }
-      assert_dir_exists("#{@apptmp}/sample_project/test/")
-      assert_file_exists("#{@apptmp}/sample_project/test/app/controllers/controllers_test.rb")
-      assert_file_exists("#{@apptmp}/sample_project/test/app/helpers/helpers_test.rb")
-      assert_match_in_file(/Dir\[File\.expand_path\(File\.dirname\(__FILE__\) \+ "\/\.\.\/app\/helpers\.rb"\)\]\.each\(&method\(:require\)\)/, "#{@apptmp}/sample_project/test/test_config.rb")
-      assert_match_in_file(/context "Controller" do/, "#{@apptmp}/sample_project/test/app/controllers/controllers_test.rb")
-      assert_match_in_file(/describe "SampleProject::App::Helper"/, "#{@apptmp}/sample_project/test/app/helpers/helpers_test.rb")
-    end
-
     it "should properly generate for shoulda" do
       capture_io { generate(:project,'sample_project', '--tiny', "--root=#{@apptmp}", "--test=shoulda") }
       assert_dir_exists("#{@apptmp}/sample_project/test/")
@@ -747,5 +681,19 @@ describe "ProjectGenerator" do
       assert_match_in_file(/class SampleProject::App::HelperTest < Test::Unit::TestCase/, "#{@apptmp}/sample_project/test/app/helpers/helpers_test.rb")
     end
 
+    it "should properly generate for testunit" do
+      out, err = capture_io { generate(:project, 'sample_project', "--root=#{@apptmp}", '--test=testunit', '--script=none', '--tiny') }
+      assert_match(/applying.*?testunit.*?test/, out)
+      assert_match_in_file(/gem 'rack-test'/, "#{@apptmp}/sample_project/Gemfile")
+      assert_match_in_file(/:require => 'rack\/test'/, "#{@apptmp}/sample_project/Gemfile")
+      assert_match_in_file(/:group => 'test'/, "#{@apptmp}/sample_project/Gemfile")
+      assert_match_in_file(/gem 'test-unit'/, "#{@apptmp}/sample_project/Gemfile")
+      assert_match_in_file(/RACK_ENV = 'test' unless defined\?\(RACK_ENV\)/, "#{@apptmp}/sample_project/test/test_config.rb")
+      assert_file_exists("#{@apptmp}/sample_project/test/test.rake")
+      assert_match_in_file(/task 'test' => test_tasks/,"#{@apptmp}/sample_project/test/test.rake")
+      assert_match_in_file(/Dir\[File\.expand_path\(File\.dirname\(__FILE__\) \+ "\/\.\.\/app\/helpers\.rb"\)\]\.each\(&method\(:require\)\)/, "#{@apptmp}/sample_project/test/test_config.rb")
+      assert_match_in_file(/class ControllerTest < Test::Unit::TestCase/, "#{@apptmp}/sample_project/test/app/controllers/controllers_test.rb")
+      assert_match_in_file(/class SampleProject::App::HelperTest < Test::Unit::TestCase/, "#{@apptmp}/sample_project/test/app/helpers/helpers_test.rb")
+    end
   end
 end

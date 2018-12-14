@@ -13,7 +13,7 @@ module Padrino
       #
       def default_configuration!
         set :app_file, File.expand_path(caller_files.first || $0)
-        set :app_name, settings.to_s.underscore.to_sym
+        set :app_name, Inflections.underscore(settings).to_sym
 
         set :environment, Padrino.env
         set :reload, proc { development? }
@@ -21,11 +21,6 @@ module Padrino
 
         set :method_override, true
         set :default_builder, 'StandardFormBuilder'
-
-        # TODO: Remove this hack after getting rid of thread-unsafe http_router:
-        if RUBY_PLATFORM == "java"
-          set :init_mutex, Mutex.new
-        end
 
         default_paths
         default_security
@@ -42,11 +37,20 @@ module Padrino
       def setup_application!
         return if @_configured
         require_dependencies
-        default_filters
         default_routes
         default_errors
         setup_locale
+        precompile_routes!
         @_configured = true
+      end
+
+      def precompile_routes?
+        settings.respond_to?(:precompile_routes) && settings.precompile_routes?
+      end
+
+      def precompile_routes!
+        compiled_router.prepare!
+        compiled_router.engine.compile!
       end
 
       private
@@ -58,6 +62,7 @@ module Padrino
         set :uri_root,      '/'
         set :public_folder, proc { Padrino.root('public', uri_root) }
         set :images_path,   proc { File.join(public_folder, 'images') }
+        set :base_url,      'http://localhost'
       end
 
       def default_security
@@ -98,6 +103,7 @@ module Padrino
       # Also initializes the application after setting up the middleware.
       def setup_default_middleware(builder)
         setup_sessions builder
+        builder.use Sinatra::ExtendedRack           if defined?(EventMachine)
         builder.use Padrino::ShowExceptions         if show_exceptions?
         builder.use Padrino::Logger::Rack, uri_root if Padrino.logger && logging?
         builder.use Padrino::Reloader::Rack         if reload?
@@ -107,16 +113,6 @@ module Padrino
         setup_protection builder
         setup_csrf_protection builder
         setup_application!
-      end
-
-      ##
-      # This filter it's used for know the format of the request, and
-      # automatically set the content type.
-      #
-      def default_filters
-        before do
-          response['Content-Type'] = 'text/html;charset=utf-8' unless @_content_type
-        end
       end
 
       ##

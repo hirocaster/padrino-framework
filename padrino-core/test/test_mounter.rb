@@ -181,7 +181,7 @@ describe "Mounter" do
       assert_equal "posts show", first_route.identifier.to_s
       assert_equal "(:posts, :show)", first_route.name
       assert_equal "GET", first_route.verb
-      assert_equal "/posts/show/:id(.:format)", first_route.path
+      assert_equal "/posts/show/:id(.:format)?", first_route.path
       another_route = Padrino.mounted_apps[1].named_routes[2]
       assert_equal "users create", another_route.identifier.to_s
       assert_equal "(:users, :create)", another_route.name
@@ -252,6 +252,62 @@ describe "Mounter" do
       mounter = Padrino.mounted_apps[0]
       assert_equal AppGem::App, mounter.app_obj
       assert_equal Padrino.root('public'), mounter.app_obj.public_folder
+    end
+
+    it 'should support the Rack Application' do
+      path = File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/mountable_apps/rack_apps')
+      require path
+      Padrino.mount('rack_app', :app_class => 'RackApp', :app_file => path).to('/rack_app')
+      Padrino.mount('rack_app2', :app_class => 'RackApp2', :app_file => path).to('/rack_app2')
+      Padrino.mount('sinatra_app', :app_class => 'SinatraApp', :app_file => path).to('/sinatra_app')
+      app = Padrino.application
+      res = Rack::MockRequest.new(app).get("/rack_app")
+      assert_equal "hello rack app", res.body
+      res = Rack::MockRequest.new(app).get("/rack_app2")
+      assert_equal "hello rack app2", res.body
+      res = Rack::MockRequest.new(app).get("/sinatra_app")
+      assert_equal "hello sinatra app", res.body
+      res = Rack::MockRequest.new(app).get("/sinatra_app/static.html")
+      assert_equal "hello static file\n", res.body
+      assert_equal [], RackApp.prerequisites
+    end
+
+    it 'should support the Rack Application with cascading style' do
+      path = File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/mountable_apps/rack_apps')
+      require path
+      Padrino.mount('rack_app', :app_class => 'RackApp', :app_file => path, cascade: false).to('/rack_app')
+      Padrino.mount('sinatra_app', :app_class => 'SinatraApp', :app_file => path).to('/')
+      app = Padrino.application
+      res = Rack::MockRequest.new(app).get("/rack_app/404")
+      assert_equal "not found ;(", res.body
+    end
+
+    it 'should support the Rack Application inside padrino project' do
+      path = File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/demo_project/app')
+      api_path = File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/demo_project/api/app')
+      require path
+      require api_path
+      Padrino.mount('api_app', :app_class => 'DemoProject::API', :app_file => api_path).to('/api')
+      Padrino.mount('main_app', :app_class => 'DemoProject::App').to('/')
+      app = Padrino.application
+      res = Rack::MockRequest.new(app).get("/")
+      assert_equal "padrino app", res.body
+      res = Rack::MockRequest.new(app).get("/api/hey")
+      assert_equal "api app", res.body
+      assert defined?(DemoProject::APILib)
+    end
+
+    it "should not load dependency files if app's root isn't started with Padrino.root" do
+      path = File.expand_path(File.dirname(__FILE__) + '/fixtures/apps/demo_project/app')
+      fake_path = File.expand_path(File.dirname(__FILE__) + "/fixtures/apps/external_apps/fake_root")
+      require path
+      require fake_path
+      Padrino.mount("fake_root", :app_class => "FakeRoot").to('/fake_root')
+      Padrino.mount('main_app', :app_class => 'DemoProject::App').to('/')
+      Padrino.stub(:root, File.expand_path(File.dirname(__FILE__) + "/fixtures/apps/demo_project")) do
+        Padrino.application
+      end
+      assert !defined?(FakeLib)
     end
   end
 end

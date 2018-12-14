@@ -27,10 +27,11 @@ module Padrino
       class_option :dev,              :desc => 'Use padrino from a git checkout',                                                    :default => false,       :type => :boolean
       class_option :tiny,             :desc => 'Generate tiny app skeleton',                                       :aliases => '-i', :default => false,       :type => :boolean
       class_option :lean,             :desc => 'Generate lean project without apps',                               :aliases => '-l', :default => false,       :type => :boolean
-      class_option :adapter,          :desc => 'SQL adapter for ORM (sqlite, mysql, mysql2, mysql-gem, postgres)', :aliases => '-a', :default => 'sqlite',    :type => :string
+      class_option :api,              :desc => 'Generate minimal project for APIs',                                                  :default => false,       :type => :boolean
       class_option :template,         :desc => 'Generate project from template',                                   :aliases => '-p', :default => nil,         :type => :string
       class_option :gem,              :desc => 'Generate project as a gem',                                        :aliases => '-g', :default => false,       :type => :boolean
       class_option :migration_format, :desc => 'Filename format for migrations (number, timestamp)',                                 :default => 'number',    :type => :string
+      class_option :adapter,          :desc => 'SQL adapter for ORM (sqlite, mysql, mysql2, mysql-gem, postgres)', :aliases => '-a', :default => 'sqlite',    :type => :string
 
       # Definitions for the available customizable components.
       defines_component_options
@@ -46,7 +47,10 @@ module Padrino
         app = (options[:app] || "App")
 
         @project_name = name.gsub(/\W/, '_').underscore.camelize
-        @app_name = app.gsub(/\W/, '_').underscore.camelize
+
+        fail "Constant `#{@project_name}` already exists. Please, use another name" if already_exists?(@project_name)
+
+        @app_name = app.gsub(/\W/, '_').camelize
         self.destination_root = File.join(options[:root], name)
         if options[:template]
           execute_runner(:template, options[:template])
@@ -62,10 +66,11 @@ module Padrino
           end
           template 'templates/Gemfile.tt', destination_root('Gemfile')
           template 'templates/Rakefile.tt', destination_root('Rakefile')
-          template 'templates/project_bin.tt', destination_root("bin/#{name}")
-          File.chmod(0755, destination_root("bin/#{name}"))
+          template 'templates/project_bin.tt', destination_root("exe/#{name}")
+          File.chmod(0755, destination_root("exe/#{name}"))
           if options.gem?
             template 'templates/gem/gemspec.tt', destination_root(name + '.gemspec')
+            inject_into_file destination_root('Rakefile'), "require 'bundler/gem_tasks'\n", :after => "require 'bundler/setup'\n"
             template 'templates/gem/README.md.tt', destination_root('README.md')
             template 'templates/gem/lib/libname.tt', destination_root("lib/#{name}.rb")
             template 'templates/gem/lib/libname/version.tt', destination_root("lib/#{name}/version.rb")
@@ -81,12 +86,12 @@ module Padrino
       #
       def setup_components
         return if options[:template]
-        @_components = options.dup.slice(*self.class.component_types)
+        @_components = options.class.new options.select{ |key,_| self.class.component_types.include?(key.to_sym) }
         self.class.component_types.each do |comp|
           choice = @_components[comp] = resolve_valid_choice(comp)
           execute_component_setup(comp, choice)
         end
-        store_component_config('.components')
+        store_component_config('.components', :force => true)
         store_component_choice(:namespace, @project_name)
         store_component_choice(:migration_format, options[:migration_format])
       end
@@ -103,12 +108,12 @@ module Padrino
           helper_template_name     = "#{uppercase_test_component}_HELPER_TEST"
           return unless defined?(controller_template_name)
 
-          controller_content = instance_eval(controller_template_name).gsub(/!NAME!/, "")
+          controller_content = instance_eval(controller_template_name).gsub(/!PATH!/, "Controller").gsub(/!NAME!/, "").gsub(/!EXPANDED_PATH!/, "/")
           helper_content     = instance_eval(helper_template_name).gsub(/!NAME!/, "#{@project_name}::#{@app_name}::#{DEFAULT_HELPER_NAME}")
 
           proc{|*args| args.map{|str| str.gsub!(/!PATH!/, recognize_path)} }.call(controller_content, helper_content)
 
-          directory_name = [:rspec, :steak].include?(test_component.to_sym) ? "spec" : "test"
+          directory_name = [:rspec].include?(test_component.to_sym) ? "spec" : "test"
           base_path      = File.join(directory_name, "app")
           create_file destination_root("#{base_path}/controllers/controllers_#{directory_name}.rb"), controller_content, :skip => true
           create_file destination_root("#{base_path}/helpers/helpers_#{directory_name}.rb"),         helper_content,     :skip => true
@@ -135,7 +140,7 @@ module Padrino
         say "#{name} is ready for development!", :green
         say '=' * 65, :green
         say "$ cd #{options[:root]}/#{name}"
-        say "$ bundle" unless options[:bundle]
+        say "$ bundle --binstubs" unless options[:bundle]
         say "=" * 65, :green
         say
       end

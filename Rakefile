@@ -1,26 +1,11 @@
 # rake bump[X.X.X] && rake publish
-require 'rubygems'  unless defined?(Gem)
-require 'fileutils' unless defined?(FileUtils)
+require 'fileutils'
 require 'rake'
-require 'yard'
 require File.expand_path("../padrino-core/lib/padrino-core/version.rb", __FILE__)
 
-ROOT     = File.expand_path(File.dirname(__FILE__))
-GEM_NAME = 'padrino-framework'
-
-padrino_gems = %w[
-  padrino-core
-  padrino-support
-  padrino-helpers
-  padrino-mailer
-  padrino-cache
-  padrino-admin
-  padrino-gen
-  padrino-performance
-  padrino
-]
-
-GEM_PATHS = padrino_gems.freeze
+load File.expand_path('../padrino/subgems.rb', __FILE__)
+GEM_PATHS = PADRINO_GEMS.keys
+ROOT = File.expand_path(File.dirname(__FILE__))
 
 def sh_rake(command)
   sh "#{Gem.ruby} -S rake #{command}", :verbose => true
@@ -47,7 +32,7 @@ end
 
 desc "Clean pkg and other stuff"
 task :uninstall do
-  padrino_gems.each {|gem|
+  GEM_PATHS.each {|gem|
     system("gem uninstall #{gem} --force -I -x 2>/dev/null")
   }
 end
@@ -70,11 +55,18 @@ end
 desc "Executes a fresh install removing all padrino version and then reinstall all gems"
 task :fresh => [:uninstall, :install, :clean]
 
-desc "Pushes repository to GitHub"
-task :push do
-  say "Updating and verifying submodules"
+desc "Pulls latest commits and updates submodules"
+task :pull do
+  say "Pulling latest commits"
+  sh "git checkout master"
+  sh "git pull origin master"
+  say "Updating submodules"
   sh "git submodule foreach git pull origin master"
   sh "ls padrino-gen/lib/padrino-gen/generators/templates/static/README.rdoc"
+end
+
+desc "Pushes repository to GitHub"
+task :push => :pull do
   say "Pushing to github..."
   sh "git tag #{Padrino.version}"
   sh "git push origin master"
@@ -93,31 +85,24 @@ task :release => :publish
 
 desc "Run tests for all padrino stack gems"
 task :test do
-  # Omit the padrino metagem since no tests there
-  GEM_PATHS[0..-2].each do |g|
+  GEM_PATHS.each do |g|
     # Hardcode the 'cd' into the command and do not use Dir.chdir because this causes random tests to fail
     sh "cd #{File.join(ROOT, g)} && #{Gem.ruby} -S rake test"
   end
 end
 
-padrino_gems.each do |element|
+GEM_PATHS.each do |element|
   desc "Run tests for #{element} component"
   task element.to_s do
     sh "cd #{element} && #{Gem.ruby} -S rake test"
   end
 end
 
-desc "Run tests for all padrino stack gems"
-task :default => :test
-
 desc "Generate documentation for the Padrino framework"
 task :doc do
+  require 'yard'
   YARD::CLI::Yardoc.new.run
 end
 
-desc "Publish doc on padrinorb.com/api"
-task :pdoc => :doc do
-  say "Publishing doc on padrinorb.com ..."
-  sh "scp -r doc/* root@lps2.lipsiasoft.com:/mnt/www/apps/padrino/public/api/"
-  sh "rm -rf doc"
-end
+desc "Run tests for all padrino stack gems"
+task :default => :test

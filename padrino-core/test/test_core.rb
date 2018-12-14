@@ -20,18 +20,7 @@ describe "Core" do
     it 'should validate global helpers' do
       assert_equal :test, Padrino.env
       assert_match /\/test/, Padrino.root
-      refute_nil Padrino.version
-    end
-
-    it 'should set correct utf-8 encoding' do
-      Padrino.set_encoding
-      assert_equal Encoding.default_external, Encoding::UTF_8
-      assert_equal Encoding.default_internal, Encoding::UTF_8
-    end
-
-    it 'should have load paths' do
-    skip
-      assert_equal [Padrino.root('lib'), Padrino.root('models'), Padrino.root('shared')], Padrino.load_paths
+      assert Padrino.version
     end
 
     it 'should raise application error if I instantiate a new padrino application without mounted apps' do
@@ -81,6 +70,18 @@ describe "Core" do
       assert_equal @app.settings.foo, :bam
       assert_equal @app.settings.zoo, :baz
       assert_equal @app.settings.moo, :bam
+    end
+
+    it 'should return a friendly 500' do
+      mock_app do
+        enable :show_exceptions
+        get(:index){ raise StandardError }
+      end
+
+      get "/"
+      assert_equal 500, status
+      assert body.include?("StandardError")
+      assert body.include?("<code>show_exceptions</code> setting")
     end
   end
 end

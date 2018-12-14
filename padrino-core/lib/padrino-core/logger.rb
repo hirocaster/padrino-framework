@@ -1,3 +1,5 @@
+require 'pathname'
+
 # Defines the log level for a Padrino project.
 PADRINO_LOG_LEVEL = ENV['PADRINO_LOG_LEVEL'] unless defined?(PADRINO_LOG_LEVEL)
 
@@ -70,12 +72,37 @@ module Padrino
           if args.size > 1
             bench(args[0], args[1], args[2], name)
           else
+            if location = resolve_source_location(caller(1).shift)
+              args.unshift(location)
+            end if enable_source_location?
             push(args * '', name)
           end
         end
 
         define_method(:"#{name}?") do
           number >= level
+        end
+      end
+
+      SOURCE_LOCATION_REGEXP = /^(.*?):(\d+?)(?::in `.+?')?$/.freeze
+
+      ##
+      # Returns true if :source_location is set to true.
+      #
+      def enable_source_location?
+        respond_to?(:source_location?) && source_location?
+      end
+
+      ##
+      # Resolves a filename and line-number from caller.
+      #
+      def resolve_source_location(message)
+        path, line = *message.scan(SOURCE_LOCATION_REGEXP).first
+        return unless path && line
+        root = Padrino.root
+        path = File.realpath(path) if Pathname.new(path).relative?
+        if path.start_with?(root) && !path.start_with?(Padrino.root("vendor"))
+          "[#{path.gsub("#{root}/", "")}:#{line}] "
         end
       end
 
@@ -237,6 +264,9 @@ module Padrino
     #
     # :log_level:: Once of [:fatal, :error, :warn, :info, :debug]
     # :stream:: Once of [:to_file, :null, :stdout, :stderr] our your custom stream
+    # :log_path:: Defines log file path or directory if :stream is :to_file
+    #   If it's a file, its location is created by mkdir_p.
+    #   If it's a directory, it must exist. In this case log name is '<env>.log'
     # :log_level::
     #   The log level from, e.g. :fatal or :info. Defaults to :warn in the
     #   production environment and :debug otherwise.
@@ -252,6 +282,10 @@ module Padrino
     #   Padrino::Logger::Config[:development] = { :log_level => :debug, :stream => :to_file }
     #   # or you can edit our defaults
     #   Padrino::Logger::Config[:development][:log_level] = :error
+    #   # or change log file path
+    #   Padrino::Logger::Config[:development][:log_path] = 'logs/app-development.txt'
+    #   # or change log file directory
+    #   Padrino::Logger::Config[:development][:log_path] = '/var/logs/padrino'
     #   # or you can use your stream
     #   Padrino::Logger::Config[:development][:stream] = StringIO.new
     #
@@ -275,12 +309,17 @@ module Padrino
 
     @@mutex = Mutex.new
     def self.logger
-      @_logger || setup!
+      (@_logger ||= nil) || setup!
     end
 
     def self.logger=(logger)
-      logger.extend(Padrino::Logger::Extensions)
-
+      unless logger.class.ancestors.include?(Padrino::Logger::Extensions)
+        warn <<-EOT
+WARNING! `Padrino.logger = new_logger` no longer extends it with #colorize! and other features.
+          To do it with a custom logger you have to manually `new_logger.extend(Padrino::Logger::Extensions)`
+          before passing to `Padrino.logger = new_logger`.
+        EOT
+      end
       @_logger = logger
     end
 
@@ -291,27 +330,37 @@ module Padrino
     #   A {Padrino::Logger} instance
     #
     def self.setup!
-      self.logger = begin
-        config_level = (PADRINO_LOG_LEVEL || Padrino.env || :test).to_sym # need this for PADRINO_LOG_LEVEL
-        config = Config[config_level]
+      config_level = (PADRINO_LOG_LEVEL || Padrino.env || :test).to_sym # need this for PADRINO_LOG_LEVEL
+      config = Config[config_level]
 
-        unless config
-          warn("No logging configuration for :#{config_level} found, falling back to :production")
-          config = Config[:production]
-        end
+      unless config
+        warn("No logging configuration for :#{config_level} found, falling back to :production")
+        config = Config[:production]
+      end
 
-        stream = case config[:stream]
-          when :to_file
+      stream = case config[:stream]
+        when :to_file
+          if filename = config[:log_path]
+            filename = Padrino.root(filename) unless Pathname.new(filename).absolute?
+            if File.directory?(filename)
+              filename = File.join(filename, "#{Padrino.env}.log")
+            else
+              FileUtils.mkdir_p(File.dirname(filename))
+            end
+            File.new(filename, 'a+')
+          else
             FileUtils.mkdir_p(Padrino.root('log')) unless File.exist?(Padrino.root('log'))
             File.new(Padrino.root('log', "#{Padrino.env}.log"), 'a+')
-          when :null   then StringIO.new
-          when :stdout then $stdout
-          when :stderr then $stderr
-          else config[:stream] # return itself, probabilly is a custom stream.
-        end
-
-        Padrino::Logger.new(config.merge(:stream => stream))
+          end
+        when :null   then StringIO.new
+        when :stdout then $stdout
+        when :stderr then $stderr
+        else config[:stream] # return itself, probabilly is a custom stream.
       end
+
+      new_logger = Padrino::Logger.new(config.merge(:stream => stream))
+      new_logger.extend(Padrino::Logger::Extensions)
+      self.logger = new_logger
     end
 
     ##
@@ -341,17 +390,30 @@ module Padrino
     # @option options [Symbol] :colorize_logging (true)
     #   Whether or not to colorize log messages. Defaults to: true.
     #
+    # @option options [Symbol] :sanitize_encoding (false)
+    #   Logger will replace undefined or broken characters with
+    #   “uFFFD” for Unicode and “?” otherwise.
+    #   Can be an encoding, false or true.
+    #   If it's true, logger sanitizes to Encoding.default_external.
+    #
     def initialize(options={})
-      @buffer          = []
-      @auto_flush      = options.has_key?(:auto_flush) ? options[:auto_flush] : true
-      @level           = options[:log_level] ? Padrino::Logger::Levels[options[:log_level]] : Padrino::Logger::Levels[:debug]
-      @log             = options[:stream]  || $stdout
-      @log.sync        = true
-      @format_datetime = options[:format_datetime] || "%d/%b/%Y %H:%M:%S"
-      @format_message  = options[:format_message]  || "%s - %s %s"
-      @log_static      = options.has_key?(:log_static) ? options[:log_static] : false
+      @buffer           = []
+      @auto_flush       = options.has_key?(:auto_flush) ? options[:auto_flush] : true
+      @level            = options[:log_level] ? Padrino::Logger::Levels[options[:log_level]] : Padrino::Logger::Levels[:debug]
+      @log              = options[:stream]  || $stdout
+      @log.sync         = true
+      @format_datetime  = options[:format_datetime] || "%d/%b/%Y %H:%M:%S"
+      @format_message   = options[:format_message]  || "%s - %s %s"
+      @log_static       = options.has_key?(:log_static) ? options[:log_static] : false
       @colorize_logging = options.has_key?(:colorize_logging) ? options[:colorize_logging] : true
+      @source_location  = options[:source_location]
+      @sanitize_encoding = options[:sanitize_encoding] || false
+      @sanitize_encoding = Encoding.default_external if @sanitize_encoding == true
       colorize! if @colorize_logging
+    end
+
+    def source_location?
+      !!@source_location
     end
 
     ##
@@ -360,7 +422,10 @@ module Padrino
     def flush
       return unless @buffer.size > 0
       @@mutex.synchronize do
-        @log.write(@buffer.join(''))
+        @buffer.each do |line|
+          line.encode!(@sanitize_encoding, :invalid => :replace, :undef => :replace) if @sanitize_encoding
+          @log.write(line)
+        end
         @buffer.clear
       end
     end

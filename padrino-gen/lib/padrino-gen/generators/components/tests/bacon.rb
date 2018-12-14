@@ -25,9 +25,9 @@ TEST
 BACON_CONTROLLER_TEST = (<<-TEST).gsub(/^ {10}/, '') unless defined?(BACON_CONTROLLER_TEST)
 require File.expand_path(File.dirname(__FILE__) + '/../../test_config.rb')
 
-describe "!NAME!Controller" do
+describe "!PATH!" do
   it 'returns text at root' do
-    get "/"
+    get "!EXPANDED_PATH!"
     last_response.body.should == "some text"
   end
 end
@@ -47,6 +47,8 @@ end
 
 desc "Run application test suite"
 task 'test' => test_tasks.map { |f| "test:\#{f}" }
+
+task :default => :test
 TEST
 
 BACON_MODEL_TEST = (<<-TEST).gsub(/^ {10}/, '') unless defined?(BACON_MODEL_TEST)
@@ -82,8 +84,8 @@ def setup_test
   create_file destination_root("test/test.rake"), BACON_RAKE
 end
 
-def generate_controller_test(name)
-  bacon_contents       = BACON_CONTROLLER_TEST.gsub(/!NAME!/, name.to_s.underscore.camelize)
+def generate_controller_test(name, path)
+  bacon_contents       = BACON_CONTROLLER_TEST.gsub(/!PATH!/, path).gsub(/!EXPANDED_PATH!/, path.gsub(/:\w+?_id/, "1"))
   controller_test_path = File.join('test',options[:app],'controllers',"#{name.to_s.underscore}_controller_test.rb")
   create_file destination_root(controller_test_path), bacon_contents, :skip => true
 end

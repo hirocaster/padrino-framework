@@ -1,5 +1,3 @@
-require 'win32console' if RUBY_PLATFORM =~ /(win|m)32/      # ruby color support for win
-
 ##
 # Add colors
 #

@@ -6,7 +6,7 @@ module Padrino
       include Thor::Actions
 
       class_option :chdir, :type => :string, :aliases => "-c", :desc => "Change to dir before starting."
-      class_option :environment, :type => :string,  :aliases => "-e", :required => true, :default => :development, :desc => "Padrino Environment."
+      class_option :environment, :type => :string,  :aliases => "-e", :desc => "Padrino Environment."
       class_option :help, :type => :boolean, :desc => "Show help usage"
 
       desc "start", "Starts the Padrino application (alternatively use 's')."
@@ -70,13 +70,17 @@ module Padrino
       def prepare(task)
         if options.help?
           help(task.to_s)
-          raise SystemExit
+          exit
         end
-        ENV["RACK_ENV"] ||= options.environment.to_s
+        if options.environment
+          ENV["RACK_ENV"] = options.environment.to_s
+        else
+          ENV["RACK_ENV"] ||= 'development'
+        end
         chdir(options.chdir)
         unless File.exist?('config/boot.rb')
           puts "=> Could not find boot file in: #{options.chdir}/config/boot.rb !!!"
-          raise SystemExit
+          abort
         end
       end
 
@@ -89,6 +93,10 @@ module Padrino
         rescue Errno::EACCES
           puts "=> Specified Padrino root '#{dir}' cannot be accessed by the current user!"
         end
+      end
+
+      def self.exit_on_failure?
+        true
       end
     end
   end

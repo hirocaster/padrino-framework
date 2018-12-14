@@ -1,5 +1,3 @@
-require 'padrino-helpers/form_builder/deprecated_builder_methods'
-
 module Padrino
   module Helpers
     module FormBuilder
@@ -8,8 +6,6 @@ module Padrino
         attr_accessor :template, :object, :multipart
         attr_reader :namespace, :is_nested, :parent_form, :nested_index, :attributes_name, :model_name
 
-        include DeprecatedBuilderMethods
-
         def initialize(template, object, options={})
           @template = template
           fail "FormBuilder template must be initialized" unless template
@@ -17,7 +13,7 @@ module Padrino
           fail "FormBuilder object must be present. If there's no object, use a symbol instead (i.e. :user)" unless object
           @options = options
           @namespace = options[:namespace]
-          @model_name = options[:as] || @object.class.to_s.underscore.gsub(/\//, '_')
+          @model_name = options[:as] || Inflections.underscore(@object.class).tr('/', '_')
           nested = options[:nested]
           if @is_nested = nested && (nested_parent = nested[:parent]) && nested_parent.respond_to?(:object)
             @parent_form = nested_parent
@@ -35,9 +31,7 @@ module Padrino
         end
 
         def label(field, options={}, &block)
-          options[:id] ||= nil
-          options[:caption] ||= I18n.t("#{model_name}.attributes.#{field}", :count => 1, :default => field.to_s.humanize, :scope => :models) + ': '
-          @template.label_tag(field_id(field), default_options(field, options), &block)
+          @template.label_tag(field_id(field), { :caption => "#{field_human_name(field)}: " }.update(options), &block)
         end
 
         def hidden_field(field, options={})
@@ -110,15 +104,43 @@ module Padrino
 
         def file_field(field, options={})
           self.multipart = true
-          @template.file_field_tag field_name(field), default_options(field, options).except(:value)
+          @template.file_field_tag field_name(field), default_options(field, options).reject{ |key, _| key == :value }
         end
 
         def submit(*args)
-          @template.submit_tag *args
+          @template.submit_tag(*args)
         end
 
         def image_submit(source, options={})
           @template.image_submit_tag source, options
+        end
+
+        def datetime_field(field, options={})
+          @template.datetime_field_tag field_name(field), default_options(field, options)
+        end
+
+        def datetime_local_field(field, options={})
+          @template.datetime_local_field_tag field_name(field), default_options(field, options)
+        end
+
+        def date_field(field, options={})
+          @template.date_field_tag field_name(field), default_options(field, options)
+        end
+
+        def month_field(field, options={})
+          @template.month_field_tag field_name(field), default_options(field, options)
+        end
+
+        def week_field(field, options={})
+          @template.week_field_tag field_name(field), default_options(field, options)
+        end
+
+        def time_field(field, options={})
+          @template.time_field_tag field_name(field), default_options(field, options)
+        end
+
+        def color_field(field, options={})
+          @template.color_field_tag field_name(field), default_options(field, options)
         end
 
         ##
@@ -133,7 +155,7 @@ module Padrino
           include_index = default_collection.respond_to?(:each)
 
           nested_options = { :parent => self, :association => child_association }
-          Array(collection).each_with_index.inject(ActiveSupport::SafeBuffer.new) do |all,(child_instance,index)|
+          Array(collection).each_with_index.inject(SafeBuffer.new) do |all,(child_instance,index)|
             nested_options[:index] = options[:index] || (include_index ? index : nil)
             all << @template.fields_for(child_instance,  { :nested => nested_options, :builder => self.class }, &block) << "\n"
           end
@@ -147,7 +169,24 @@ module Padrino
 
         # Returns the known field types for a Formbuilder.
         def self.field_types
-          [:hidden_field, :text_field, :text_area, :password_field, :file_field, :radio_button, :check_box, :select]
+          [:hidden_field, :text_field, :text_area, :password_field, :file_field, :radio_button, :check_box, :select,
+            :number_field, :telephone_field, :email_field, :search_field, :url_field,
+            :datetime_field, :datetime_local_field, :date_field, :month_field, :week_field, :time_field, :color_field,
+          ]
+        end
+
+        ##
+        # Returns the human name of the field. Look that use builtin I18n.
+        #
+        def field_human_name(field)
+          I18n.translate("#{model_name}.attributes.#{field}", :count => 1, :default => Inflections.humanize(field), :scope => :models)
+        end
+
+        ##
+        # Returns the object's models name.
+        #
+        def object_model_name(explicit_object=object)
+          explicit_object.is_a?(Symbol) ? explicit_object : explicit_object.class.to_s.underscore.gsub(/\//, '_')
         end
 
         ##
@@ -157,7 +196,7 @@ module Padrino
         # field_name(:street) => "user[addresses_attributes][0][street]"
         def field_name(field=nil)
           result = field_name_fragment
-          result << "[#{field}]" unless field.blank?
+          result << "[#{field}]" if field
           result
         end
 
@@ -170,8 +209,8 @@ module Padrino
         def field_id(field=nil, value=nil)
           result = (namespace && !is_nested) ? "#{namespace}_" : ''
           result << field_id_fragment
-          result << "_#{field}" unless field.blank?
-          result << "_#{value}" unless value.blank?
+          result << "_#{field}" if field
+          result << "_#{value}" if value
           result
         end
 
@@ -193,7 +232,7 @@ module Padrino
         # Returns a record from template instance or create a record of specified class.
         #
         def build_object(symbol)
-          @template.instance_variable_get("@#{symbol}") || symbol.to_s.camelize.constantize.new
+          @template.instance_variable_get("@#{symbol}") || Inflections.constantize(Inflections.camelize(symbol)).new
         end
 
         ##
@@ -203,7 +242,7 @@ module Padrino
           options = { :id => field_id(field), :selected => field_value(field) }.update(options)
           options.update(error_class(field)){ |_,*values| values.compact.join(' ') }
           selected_values = resolve_checked_values(field, options)
-          variants_for_group(options).inject(ActiveSupport::SafeBuffer.new) do |html, (caption,value)|
+          variants_for_group(options).inject(SafeBuffer.new) do |html, (caption,value)|
             variant_id = "#{options[:id]}_#{value}"
             attributes = { :value => value, :id => variant_id, :checked => selected_values.include?(value) }
             caption = yield(attributes) << ' ' << caption
@@ -269,7 +308,7 @@ module Padrino
 
         def error_class(field)
           error = @object.errors[field] if @object.respond_to?(:errors)
-          error.blank? ? {} : { :class => 'invalid' }
+          error.nil? || error.empty? ? {} : { :class => 'invalid' }
         end
 
         def default_options(field, options, defaults={})

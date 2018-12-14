@@ -57,25 +57,6 @@ describe "FormatHelpers" do
     end
   end
 
-  describe 'for #pluralize method' do
-    it 'should return singular count for 1 item collections' do
-      actual_text = pluralize(1, 'person')
-      assert_equal '1 person', actual_text
-    end
-    it 'should return plural count for empty collections' do
-      actual_text = pluralize(0, 'person')
-      assert_equal '0 people', actual_text
-    end
-    it 'should return plural count for many collections' do
-      actual_text =  pluralize(2, 'person')
-      assert_equal '2 people', actual_text
-    end
-    it 'should return pluralized word specified as argument' do
-      actual_text =  pluralize(3, 'person', 'users')
-      assert_equal '3 users', actual_text
-    end
-  end
-
   describe 'for #word_wrap method' do
     it 'should return proper formatting for 8 max width' do
       actual_text = word_wrap('Once upon a time', :line_width => 8)
@@ -158,6 +139,8 @@ describe "FormatHelpers" do
   end
 
   describe 'for #time_ago_in_words method' do
+    _DAY = 24*60*60
+
     it 'should less than 5 seconds' do
       assert_equal 'less than 5 seconds', time_ago_in_words(Time.now, true)
     end
@@ -177,75 +160,72 @@ describe "FormatHelpers" do
       assert_equal 'less than a minute', time_ago_in_words(Time.now)
     end
     it 'should display yesterday' do
-      assert_equal '1 day', time_ago_in_words(1.day.ago)
+      assert_equal '1 day', time_ago_in_words(Time.now - _DAY)
     end
     it 'should display tomorrow' do
-      assert_equal '1 day', time_ago_in_words(1.day.from_now)
+      assert_equal '1 day', time_ago_in_words(Time.now + _DAY)
     end
     it 'should return future number of days' do
-      assert_equal '4 days', time_ago_in_words(4.days.from_now)
+      assert_equal '4 days', time_ago_in_words(Time.now + 4*_DAY)
     end
     it 'should return past days ago' do
-      assert_equal '4 days', time_ago_in_words(4.days.ago)
+      assert_equal '4 days', time_ago_in_words(Time.now - 4*_DAY)
     end
     it 'should return formatted archived date' do
-      assert_equal '3 months', time_ago_in_words(100.days.ago)
+      assert_equal '3 months', time_ago_in_words(Time.now - 100*_DAY)
     end
     it 'should return formatted archived year date' do
-      assert_equal 'over 1 year', time_ago_in_words(500.days.ago)
+      assert_equal 'over 1 year', time_ago_in_words(Time.now - 500*_DAY)
     end
     it 'should display now as a minute ago' do
-      assert_equal '1 minute', time_ago_in_words(1.minute.ago)
+      assert_equal '1 minute', time_ago_in_words(Time.now - 60)
     end
     it 'should display a few minutes ago' do
-      assert_equal '4 minutes', time_ago_in_words(4.minute.ago)
+      assert_equal '4 minutes', time_ago_in_words(Time.now - 4*60)
     end
     it 'should display an hour ago' do
-      assert_equal 'about 1 hour', time_ago_in_words(1.hour.ago + 5.minutes.ago.sec)
+      assert_equal 'about 1 hour', time_ago_in_words(Time.now - 60*60 + 5)
     end
     it 'should display a few hours ago' do
-      assert_equal 'about 3 hours', time_ago_in_words(3.hour.ago + 5.minutes.ago.sec)
-    end
-    it 'should display a day ago' do
-      assert_equal '1 day', time_ago_in_words(1.day.ago)
+      assert_equal 'about 3 hours', time_ago_in_words(Time.now - 3*60*60 + 5*60)
     end
     it 'should display a few days ago' do
-      assert_equal '5 days', time_ago_in_words(5.days.ago - 5.minutes.ago.sec)
+      assert_equal '5 days', time_ago_in_words(Time.now - 5*_DAY - 5*60)
     end
     it 'should display a month ago' do
-      assert_equal 'about 1 month', time_ago_in_words(32.days.ago + 5.minutes.ago.sec)
+      assert_equal 'about 1 month', time_ago_in_words(Time.now - 32*_DAY + 5*60)
     end
     it 'should display a few months ago' do
-      assert_equal '6 months', time_ago_in_words(180.days.ago - 5.minutes.ago.sec)
+      assert_equal '6 months', time_ago_in_words(Time.now - 180*_DAY - 5*60)
     end
     it 'should display a year ago' do
-      assert_equal 'about 1 year', time_ago_in_words(365.days.ago - 5.minutes.ago.sec)
+      assert_equal 'about 1 year', time_ago_in_words(Time.now - 365*_DAY - 5*60)
     end
     it 'should display a few years ago' do
-      assert_equal 'over 7 years', time_ago_in_words(2800.days.ago - 5.minutes.ago.sec)
+      assert_equal 'over 7 years', time_ago_in_words(Time.now - 2800*_DAY - 5*60)
     end
   end
 
   describe 'for #js_escape_html method' do
     it 'should escape double quotes' do
       assert_equal "\\\"hello\\\"", js_escape_html('"hello"')
-      assert_equal "\\\"hello\\\"", js_escape_html(ActiveSupport::SafeBuffer.new('"hello"'))
+      assert_equal "\\\"hello\\\"", js_escape_html(SafeBuffer.new('"hello"'))
     end
     it 'should escape single quotes' do
       assert_equal "\\'hello\\'", js_escape_html("'hello'")
-      assert_equal "\\'hello\\'", js_escape_html(ActiveSupport::SafeBuffer.new("'hello'"))
+      assert_equal "\\'hello\\'", js_escape_html(SafeBuffer.new("'hello'"))
     end
     it 'should escape html tags and breaks' do
       assert_equal "\\n\\n<p>hello<\\/p>\\n", js_escape_html("\n\r<p>hello</p>\r\n")
-      assert_equal "\\n\\n<p>hello<\\/p>\\n", js_escape_html(ActiveSupport::SafeBuffer.new("\n\r<p>hello</p>\r\n"))
+      assert_equal "\\n\\n<p>hello<\\/p>\\n", js_escape_html(SafeBuffer.new("\n\r<p>hello</p>\r\n"))
     end
     it 'should escape data-confirm attribute' do
       assert_equal "<data-confirm=\\\"are you sure\\\">", js_escape_html("<data-confirm=\"are you sure\">")
-      assert_equal "<data-confirm=\\\"are you sure\\\">", js_escape_html(ActiveSupport::SafeBuffer.new("<data-confirm=\"are you sure\">"))
+      assert_equal "<data-confirm=\\\"are you sure\\\">", js_escape_html(SafeBuffer.new("<data-confirm=\"are you sure\">"))
     end
     it 'should keep html_safe content html_safe' do
       assert_equal false, js_escape_html('"hello"').html_safe?
-      assert_equal true, js_escape_html(ActiveSupport::SafeBuffer.new('"hello"')).html_safe?
+      assert_equal true, js_escape_html(SafeBuffer.new('"hello"')).html_safe?
     end
   end
 end

@@ -3,27 +3,26 @@ require File.expand_path(File.dirname(__FILE__) + '/helper')
 describe "AdminApplication" do
 
   def setup
-    load_fixture 'data_mapper'
+    load_fixture 'sequel'
   end
 
   describe "session id setting" do
     it "should provide it if it doesn't exist" do
       mock_app do
+        set :app_name, 'session_id_tester'
         register Padrino::Admin::AccessControl
       end
 
-      assert_equal @app.session_id, "_padrino_#{File.basename(Padrino.root)}_#{@app.app_name}".to_sym
+      assert_equal "_padrino_test_session_id_tester", @app.session_id
     end
 
-    # it "should preserve it if it already existed" do
-    #   Padrino.configure_apps { enable :sessions; set :session_id, "foo" }
-
-    #   mock_app do
-    #     register Padrino::Admin::AccessControl
-    #   end
-
-    #   assert_equal @app.session_id, "foo"
-    # end
+    it "should preserve it if it already existed" do
+      mock_app do
+        set :session_id, "foo"
+        register Padrino::Admin::AccessControl
+      end
+      assert_equal "foo", @app.session_id
+    end
   end
 
   it 'should require correctly login' do
@@ -109,7 +108,7 @@ describe "AdminApplication" do
       end
 
       # Prepare a basic page
-      get "/login(/:role)" do
+      get "/login(/:role)?" do
         set_current_account(Account.send(params[:role])) if params[:role]
         "logged as #{params[:role] || "any"}"
       end
@@ -267,5 +266,22 @@ describe "AdminApplication" do
 
     get "/modules"
     assert_equal "admin => /admin", body
+  end
+
+  it 'should use different access control for different apps' do
+    app1 = Sinatra.new Padrino::Application do
+      register Padrino::Admin::AccessControl
+      access_control.roles_for :any do |role|
+        role.project_module :foo, "/foo"
+      end
+    end
+    app2 = Sinatra.new Padrino::Application do
+      register Padrino::Admin::AccessControl
+      access_control.roles_for :any do |role|
+        role.project_module :bar, "/bar"
+      end
+    end
+    assert_equal '/foo', app1.access_control.project_modules(:any).first.path
+    assert_equal '/bar', app2.access_control.project_modules(:any).first.path
   end
 end

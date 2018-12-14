@@ -91,4 +91,24 @@ class RenderDemo < Padrino::Application
       content_tag :div, 'go block!'
     end
   end
+
+  helpers do
+    def dive_helper(ext)
+      # @current_engine, save = nil, @current_engine
+      form_result = form_tag '/' do
+        render "dive_inner_#{ext}"
+      end
+      # @current_engine = save
+      content_tag('div', form_result, :class => 'wrapper')
+    end
+  end
+
+  get '/double_dive_:ext' do
+    @ext = params[:ext]
+    render "dive_outer_#{@ext}"
+  end
+
+  get '/' do
+    render 'index'
+  end
 end

@@ -1,6 +1,8 @@
 require 'sinatra/base'
 require 'padrino-core/version'
 require 'padrino-support'
+require 'padrino-support/inflections'
+require 'padrino-core/configuration'
 require 'padrino-core/application'
 
 require 'padrino-core/caller'
@@ -25,6 +27,7 @@ module Padrino
   class ApplicationLoadError < RuntimeError # @private
   end
 
+  extend Configuration
   extend Loader
 
   class << self
@@ -66,10 +69,10 @@ module Padrino
     #   No applications were mounted.
     #
     def application
-      warn 'WARNING! No apps are mounted. Please, mount apps in `config/apps.rb`' unless Padrino.mounted_apps.present?
+      warn 'WARNING! No apps are mounted. Please, mount apps in `config/apps.rb`' if Padrino.mounted_apps.empty?
       router = Padrino::Router.new
       Padrino.mounted_apps.each { |app| app.map_onto(router) }
-      middleware.present? ? add_middleware(router) : router
+      middleware.empty? ? router : add_middleware(router)
     end
 
     ##
@@ -109,8 +112,8 @@ module Padrino
     # @return [NilClass]
     #
     def set_encoding
-      Encoding.default_external = Encoding::UTF_8
-      Encoding.default_internal = Encoding::UTF_8
+      # remove after 0.15
+      warn 'Warning! Padrino.set_encoding is deprecated. Padrino no longer manages ruby default encodings'
       nil
     end
 

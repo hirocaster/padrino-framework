@@ -1,11 +1,3 @@
-Dir["{lib/tasks/**,tasks/**,test,spec}/*.rake"].each do |file|
-  begin
-    load(file)
-  rescue LoadError => e
-    warn "#{file}: #{e.message}"
-  end
-end
-
 # Loads the Padrino applications mounted within the project.
 # Setting up the required environment for Padrino.
 task :environment do
@@ -16,13 +8,10 @@ task :environment do
   end
 end
 
-# Loads skeleton Padrino environment, no models, no application settings.
 task :skeleton do
-  module Padrino::Reloader
-    def self.safe_load(file, options)
-      super unless file.include?('/models/')
-    end
-  end
+  PADRINO_ROOT ||= Rake.application.original_dir
+  require 'padrino-core'
+  Padrino.send(:dependency_paths).reject!{ |path| path.include?('/models/') }
   require File.expand_path('config/boot.rb', Rake.application.original_dir)
 end
 
@@ -33,7 +22,7 @@ end
 
 def list_app_routes(app, args)
   app_routes = app.named_routes
-  app_routes.reject! { |r| r.identifier.to_s !~ /#{args.query}/ } if args.query.present?
+  app_routes.reject! { |r| r.identifier.to_s !~ /#{args.query}/ } if args.query && !args.query.empty?
   app_routes.map! { |r| [r.verb, r.name, r.path] }
   return if app_routes.empty?
   shell.say "\nApplication: #{app.app_class}", :yellow
@@ -44,6 +33,19 @@ def list_app_routes(app, args)
     message = [row[1].ljust(max_col_2+2), row[0].center(max_col_1+2), row[2]]
     shell.say("    " + message.join(" "), i==0 ? :bold : nil)
   end
+end
+
+def env_migration_version
+  version = ENV["MIGRATION_VERSION"]
+  if version.nil? && ENV["VERSION"]
+    deprecated = true
+    warn "Environment variable VERSION is deprecated, use MIGRATION_VERSION"
+    version = ENV["VERSION"]
+  end
+  version ? Integer(version) : nil
+rescue ArgumentError
+  warn "Environment variable #{deprecated ? '' : 'MIGRATION_'}VERSION=#{version} should be non-existant or Integer"
+  nil
 end
 
 desc "Displays a listing of the named routes within a project, optionally only those matched by [query]"
@@ -58,5 +60,13 @@ namespace :routes do
   task :app, [:app] => :environment do |t, args|
     app = Padrino.mounted_apps.find { |app| app.app_class == args.app }
     list_app_routes(app, args) if app
+  end
+end
+
+Dir["{lib/tasks/**,tasks/**,test,spec}/*.rake"].each do |file|
+  begin
+    load(File.expand_path(file))
+  rescue LoadError => e
+    warn "#{file}: #{e.message}"
   end
 end

@@ -45,7 +45,9 @@ module Padrino
         #
         def option_is_selected?(value, caption, selected_values)
           Array(selected_values).any? do |selected|
-            [value.to_s, caption.to_s].include?(selected.to_s)
+            value ?
+              value.to_s == selected.to_s :
+              caption.to_s == selected.to_s
           end
         end
 
@@ -53,11 +55,11 @@ module Padrino
         # Returns the options tags for a select based on the given option items.
         #
         def options_for_select(option_items, state = {})
-          return [] if option_items.blank?
+          return [] if option_items.count == 0
           option_items.map do |caption, value, attributes|
-            html_attributes = { :value => value ||= caption }.merge(attributes||{})
-            html_attributes[:selected] ||= option_is_selected?(value, caption, state[:selected])
-            html_attributes[:disabled] ||= option_is_selected?(value, caption, state[:disabled])
+            html_attributes = { :value => value || caption }.merge(attributes||{})
+            html_attributes[:selected] ||= option_is_selected?(html_attributes[:value], caption, state[:selected])
+            html_attributes[:disabled] ||= option_is_selected?(html_attributes[:value], caption, state[:disabled])
             content_tag(:option, caption, html_attributes)
           end
         end
@@ -85,11 +87,12 @@ module Padrino
 
         def extract_option_items!(options)
           if options[:collection]
-            collection, fields = options.delete(:collection), options.delete(:fields)
+            fields = options.delete(:fields)
+            collection = options.delete(:collection)
             collection.map{ |item| [ item.send(fields.first), item.send(fields.last) ] }
           else
             options.delete(:options) || []
-          end        
+          end
         end
       end
     end
